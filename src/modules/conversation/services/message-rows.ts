@@ -1,6 +1,7 @@
 import {diffLines} from 'diff';
+import {isAbsolute, relative} from 'node:path';
 import stringWidth from 'string-width';
-import type {UiMessage} from '../types.js';
+import type {ToolMessage, UiMessage} from '../types.js';
 import {markdownRows} from './markdown-rows.js';
 import {makeRow} from './row-model.js';
 import type {RowSegment, TranscriptRow} from '../types.js';
@@ -10,12 +11,31 @@ const TOOL_DETAIL_PREFIX = '  ⎿  ';
 const SUCCESS_DETAIL_LINES = 3;
 const ERROR_DETAIL_LINES = 10;
 
+const TOOL_STATUS_MARKER: Record<ToolMessage['status'], string> = {
+	queued: '◌',
+	running: '✻',
+	waitingPermission: '?',
+	success: '✓',
+	error: '×',
+	rejected: '×',
+	cancelled: '–',
+};
+
+const displayToolSummary = (message: Extract<UiMessage, {kind: 'tool'}>): string => {
+	if ((message.group !== 'read' && message.group !== 'edit') || !isAbsolute(message.summary)) return message.summary;
+	const projectRelative = relative(process.cwd(), message.summary);
+	return projectRelative && !projectRelative.startsWith('..') && !isAbsolute(projectRelative)
+		? projectRelative
+		: message.summary;
+};
+
 const toolDetailRows = (
 	message: Extract<UiMessage, {kind: 'tool'}>,
 	contentWidth: number,
 	expanded: boolean,
 ): TranscriptRow[] => {
 	if (!message.detail) return [];
+	if (message.group === 'read' && message.status === 'success') return [];
 	const detailTone = message.status === 'error' ? 'error' : 'muted';
 	const detailWidth = Math.max(1, contentWidth - stringWidth(TOOL_DETAIL_PREFIX));
 	const wrapped = wrapSegments([{text: message.detail, tone: detailTone}], detailWidth);
@@ -47,6 +67,7 @@ const toolDetailRows = (
 export const messageToRows = (message: UiMessage, width: number, expanded = false): TranscriptRow[] => {
 	const contentWidth = Math.max(8, width - 2);
 	if (message.kind === 'assistant') {
+		if (!message.content.trim()) return [];
 		const prefix: RowSegment[] =
 			message.variant === 'thinking'
 				? [{text: '✻ ', tone: 'muted', selectable: false}]
@@ -78,11 +99,16 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 					: message.status === 'waitingPermission'
 						? 'permission'
 						: 'tool';
-		const statusPrefix = message.status === 'running' ? '✻ ' : message.status === 'queued' ? '◌ ' : '';
 		const lines = wrapSegments(
 			[
-				{text: `${statusPrefix}${message.name}`, tone: statusTone, bold: true, selectable: false},
-				{text: `(${message.summary})`, tone: 'muted'},
+				{
+					text: `${TOOL_STATUS_MARKER[message.status]} ${message.name}`,
+					tone: statusTone,
+					bold: true,
+					selectable: false,
+				},
+				{text: '  ', selectable: false},
+				{text: displayToolSummary(message), tone: 'muted'},
 			],
 			contentWidth,
 		).map((segments, index) => makeRow(message, index, segments));
@@ -126,12 +152,22 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 	).map((segments, index) => makeRow(message, index, segments));
 };
 
+export const shouldSeparateMessages = (previous: UiMessage, current: UiMessage): boolean => {
+	const previousIsActivity = previous.kind === 'tool' || previous.kind === 'diff';
+	const currentIsActivity = current.kind === 'tool' || current.kind === 'diff';
+	return !(previousIsActivity && currentIsActivity);
+};
+
 export const messagesToRows = (messages: readonly UiMessage[], width: number, expanded = false): TranscriptRow[] => {
 	const rows: TranscriptRow[] = [];
+	let previous: UiMessage | undefined;
 	for (const message of messages) {
-		if (rows.length > 0)
+		const rendered = messageToRows(message, width, expanded);
+		if (rendered.length === 0) continue;
+		if (previous && shouldSeparateMessages(previous, message))
 			rows.push({id: `${message.id}:gap`, messageId: message.id, messageKind: message.kind, segments: [{text: ''}]});
-		rows.push(...messageToRows(message, width, expanded));
+		rows.push(...rendered);
+		previous = message;
 	}
 	return rows;
 };

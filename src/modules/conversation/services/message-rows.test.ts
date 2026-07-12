@@ -38,7 +38,7 @@ describe('transcript row model', () => {
 	it('collapses successful tool details to three visual rows with an accurate expansion hint', () => {
 		const rows = messageToRows(toolMessage('success', 8), 80);
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'ExecCommand(print output)',
+			'✓ ExecCommand  print output',
 			'  ⎿  output 1',
 			'  ⎿  output 2',
 			'  ⎿  output 3',
@@ -49,7 +49,7 @@ describe('transcript row model', () => {
 	it('shows four successful detail rows when only one row would be hidden', () => {
 		const rows = messageToRows(toolMessage('success', 4), 80);
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'ExecCommand(print output)',
+			'✓ ExecCommand  print output',
 			'  ⎿  output 1',
 			'  ⎿  output 2',
 			'  ⎿  output 3',
@@ -75,5 +75,33 @@ describe('transcript row model', () => {
 		};
 		const rows = messageToRows(message, 14);
 		expect(rows.at(-1) && rowText(rows.at(-1)!)).toBe('  ⎿  … +2 lines (ctrl+o to expand)');
+	});
+
+	it('renders successful reads as one compact row and removes gaps between adjacent activity', () => {
+		const read = (id: string): ToolMessage => ({
+			id,
+			kind: 'tool',
+			name: 'Read',
+			status: 'success',
+			summary: `/workspace/${id}.ts`,
+			detail: 'Read 20 of 20 lines from line 1.',
+			group: 'read',
+		});
+		const rows = messagesToRows([read('one'), read('two')], 80);
+
+		expect(rows.map((row) => rowText(row))).toEqual(['✓ Read  /workspace/one.ts', '✓ Read  /workspace/two.ts']);
+	});
+
+	it('shows file activity relative to the active project', () => {
+		const message: ToolMessage = {
+			id: 'project-file',
+			kind: 'tool',
+			name: 'Read',
+			status: 'success',
+			summary: `${process.cwd()}/src/index.ts`,
+			group: 'read',
+		};
+
+		expect(rowText(messageToRows(message, 80)[0]!)).toBe('✓ Read  src/index.ts');
 	});
 });

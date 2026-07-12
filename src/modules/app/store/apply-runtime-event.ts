@@ -28,12 +28,13 @@ export const applyRuntimeEvent = (state: AppStoreState, event: RuntimeEvent): Ap
 				? {...state, messages: [...state.messages, event.message]}
 				: {
 						...state,
-						messages: state.messages.map((message) => (message.id === event.message.id ? event.message : message)),
+						messages: state.messages.map((message, messageIndex) => (messageIndex === index ? event.message : message)),
 					};
 		}
 		case 'assistant.delta': {
 			const existing = state.messages.find((message) => message.id === event.messageId);
 			if (existing?.kind !== 'assistant') {
+				if (!event.delta.trim()) return state;
 				return {
 					...state,
 					messages: [

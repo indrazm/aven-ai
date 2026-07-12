@@ -57,6 +57,7 @@ const AppShell = ({runtime}: {runtime: AgentRuntime}) => {
 				selectedSuggestion={composer.suggestionIndex}
 				exitHint={navigation.exitHint}
 				providerModel={providerModel}
+				transcriptActive={navigation.transcriptMode}
 			/>
 		</Box>
 	);

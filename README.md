@@ -76,22 +76,24 @@ Slash commands open searchable overlays or perform session actions:
 
 ### Keyboard and mouse controls
 
-| Input                       | Action                                                 |
-| --------------------------- | ------------------------------------------------------ |
-| `Enter`                     | Submit a prompt                                        |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline                                       |
-| `\` then `Enter`            | Insert a newline in terminals without modifier support |
-| `Ctrl+O`                    | Toggle transcript navigation and tool output           |
-| `Page Up` / `Page Down`     | Scroll the transcript                                  |
-| `Ctrl+Home` / `Ctrl+End`    | Jump to the start or end                               |
-| `Ctrl+R`                    | Open prompt history                                    |
-| Mouse wheel                 | Scroll the transcript                                  |
-| Mouse drag                  | Select transcript text                                 |
-| Double-click / triple-click | Select a word or line                                  |
-| `Ctrl+Shift+C`              | Copy selected text through OSC 52                      |
-| `Esc`                       | Close or cancel the current UI context                 |
-| `Ctrl+C`                    | Interrupt active work; press twice while idle to exit  |
-| `Ctrl+D`                    | Delete forward; press twice on empty input to exit     |
+| Input                       | Action                                                   |
+| --------------------------- | -------------------------------------------------------- |
+| `Enter`                     | Submit a prompt                                          |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline                                         |
+| `\` then `Enter`            | Insert a newline in terminals without modifier support   |
+| `Ctrl+O`                    | Toggle transcript navigation and tool output             |
+| `Page Up` / `Page Down`     | Scroll the transcript                                    |
+| `Ctrl+Home` / `Ctrl+End`    | Jump to the start or end                                 |
+| `↑` / `↓` or `j` / `k`      | Scroll one line while transcript navigation is active    |
+| `g` / `G` or `Home` / `End` | Jump to either end while transcript navigation is active |
+| `Ctrl+R`                    | Open prompt history                                      |
+| Mouse wheel                 | Scroll the transcript                                    |
+| Mouse drag                  | Select transcript text                                   |
+| Double-click / triple-click | Select a word or line                                    |
+| `Ctrl+Shift+C`              | Copy selected text through OSC 52                        |
+| `Esc`                       | Close or cancel the current UI context                   |
+| `Ctrl+C`                    | Interrupt active work; press twice while idle to exit    |
+| `Ctrl+D`                    | Delete forward; press twice on empty input to exit       |
 
 Typing `?` or `!` into an empty composer opens help or direct command mode. Session changes are disabled while a turn is active or prompts are queued.
 

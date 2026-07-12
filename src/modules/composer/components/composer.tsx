@@ -15,6 +15,7 @@ type Props = {
 	selectedSuggestion: number;
 	exitHint: boolean;
 	providerModel: string;
+	transcriptActive: boolean;
 };
 
 const statusLabel: Record<Exclude<AgentStatus, 'idle'>, string> = {
@@ -45,6 +46,7 @@ export const Composer = ({
 	selectedSuggestion,
 	exitHint,
 	providerModel,
+	transcriptActive,
 }: Props) => {
 	const safeCursor = Math.max(0, Math.min(cursor, value.length));
 	const current = value.slice(safeCursor, safeCursor + 1);
@@ -53,6 +55,9 @@ export const Composer = ({
 	const cursorGlyph = current === '\n' || current === '' ? ' ' : current;
 	const suffix = current === '\n' ? `\n${after}` : after;
 	const visibleSuggestions = suggestionWindow(suggestions, selectedSuggestion);
+	const controls = transcriptActive
+		? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close'
+		: 'shift+enter newline · ctrl+o scroll · ctrl+c×2 exit';
 
 	return (
 		<Box flexDirection="column" flexShrink={0}>
@@ -99,7 +104,7 @@ export const Composer = ({
 					{suffix}
 				</Text>
 			</Box>
-			<Box paddingX={2} justifyContent="space-between">
+			<Box height={1} flexShrink={0} paddingX={2} justifyContent="space-between" overflow="hidden">
 				{exitHint ? (
 					<Text color={theme.warning}>Press again to exit</Text>
 				) : status === 'thinking' ? (
@@ -111,7 +116,9 @@ export const Composer = ({
 				) : (
 					<Text color={theme.muted}>{statusLabel[status]}</Text>
 				)}
-				<Text color={theme.subtle}>shift+enter newline · ctrl+o transcript / expand · ctrl+c twice exits</Text>
+				<Text color={transcriptActive ? theme.accent : theme.muted} wrap="truncate-end">
+					{controls}
+				</Text>
 			</Box>
 		</Box>
 	);

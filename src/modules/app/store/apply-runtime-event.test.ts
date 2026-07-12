@@ -20,6 +20,13 @@ describe('application store runtime events', () => {
 		]);
 	});
 
+	it('does not create transcript rows for whitespace-only assistant turns', () => {
+		const store = createAppStore();
+		store.getState().applyRuntimeEvent({type: 'assistant.delta', messageId: 'empty-answer', delta: '\n\n'});
+
+		expect(store.getState().messages).toEqual([]);
+	});
+
 	it('keeps app instances isolated', () => {
 		const first = createAppStore();
 		const second = createAppStore();
@@ -85,6 +92,22 @@ describe('application store runtime events', () => {
 		});
 		store.getState().recover();
 		expect(store.getState()).toMatchObject({status: 'idle', activeTurnId: null});
+	});
+
+	it('never rewrites multiple transcript blocks when a runtime accidentally repeats an id', () => {
+		const store = createAppStore();
+		const running = {id: 'duplicate', kind: 'tool', name: 'Read', status: 'running', summary: 'file'} as const;
+		store.getState().applyRuntimeEvent({type: 'message.appended', message: running});
+		store.getState().applyRuntimeEvent({type: 'message.appended', message: running});
+		store.getState().applyRuntimeEvent({
+			type: 'message.replaced',
+			message: {...running, status: 'success'},
+		});
+
+		expect(store.getState().messages.map((message) => (message.kind === 'tool' ? message.status : undefined))).toEqual([
+			'success',
+			'running',
+		]);
 	});
 
 	it('ignores completion and failure events from a superseded turn', () => {

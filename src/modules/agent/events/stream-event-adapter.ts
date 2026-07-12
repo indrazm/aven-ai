@@ -12,6 +12,7 @@ import {
 
 export type PendingToolCall = {
 	id: string;
+	toolCallId: string;
 	callId: string;
 	name: string;
 	summary: string;
@@ -20,6 +21,16 @@ export type PendingToolCall = {
 
 export type MutationSource = {
 	takeMutation(operationId: string): FileMutation | undefined;
+};
+
+const pendingToolIndex = (queue: PendingToolCall[], resultId: string | undefined, toolName: string): number => {
+	if (resultId) {
+		const exact = queue.findIndex((item) => item.callId === resultId || item.toolCallId === resultId);
+		if (exact >= 0) return exact;
+	}
+	const sameTool = queue.findIndex((item) => item.name === toolName);
+	if (sameTool >= 0) return sameTool;
+	return resultId ? -1 : 0;
 };
 
 export const eventToRuntimeEvents = (
@@ -38,7 +49,10 @@ export const eventToRuntimeEvents = (
 		case 'tool_call': {
 			const name = event.toolCall.function.name;
 			const pending: PendingToolCall = {
-				id: `tool-${requestId}-${event.toolCall.id}`,
+				// Provider tool IDs are only guaranteed within one model turn.
+				// Include the turn so later tool loops can never replace earlier UI blocks.
+				id: `tool-${requestId}-${event.turn}-${event.toolCall.id}`,
+				toolCallId: event.toolCall.id,
 				callId: event.toolCall.callId ?? event.toolCall.id,
 				name,
 				summary: summaryFromArguments(name, event.toolCall.function.arguments),
@@ -61,9 +75,8 @@ export const eventToRuntimeEvents = (
 			];
 		}
 		case 'tool_result': {
-			const matchedIndex = event.toolCallId ? toolQueue.findIndex((item) => item.callId === event.toolCallId) : 0;
-			const pendingIndex = matchedIndex >= 0 ? matchedIndex : 0;
-			const pending = toolQueue.splice(pendingIndex, 1)[0];
+			const pendingIndex = pendingToolIndex(toolQueue, event.toolCallId, event.toolName);
+			const pending = pendingIndex >= 0 ? toolQueue.splice(pendingIndex, 1)[0] : undefined;
 			const id = pending?.id ?? `tool-${requestId}-${event.internalCallId}`;
 			const toolMessage = toolMessageFromSerializedResult(
 				id,

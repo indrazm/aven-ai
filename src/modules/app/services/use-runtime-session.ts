@@ -3,6 +3,7 @@ import type {AgentStatus, InputMode, SubmitRequest} from '../../agent/index.js';
 import type {AgentRuntime} from '../../agent/index.js';
 import {normalizeInput} from '../../composer/index.js';
 import {useAppStore, useAppStoreApi} from '../components/app-provider.js';
+import {RuntimeEventBatcher} from './runtime-event-batcher.js';
 
 export type RuntimeSession = {
 	submit: (content: string, mode: InputMode) => void;
@@ -25,22 +26,29 @@ export const useRuntimeSession = (
 		async (request: SubmitRequest) => {
 			const abortController = new AbortController();
 			controller.current = abortController;
+			const batcher = new RuntimeEventBatcher((event) => {
+				if (controller.current !== abortController || abortController.signal.aborted) return;
+				store.getState().applyRuntimeEvent(event);
+				if (event.type === 'turn.started') onSessionActivity?.('started');
+				if (event.type === 'turn.completed') onSessionActivity?.('completed');
+			});
 			try {
 				for await (const event of runtime.run(request, abortController.signal)) {
 					if (controller.current !== abortController || abortController.signal.aborted) break;
-					store.getState().applyRuntimeEvent(event);
-					if (event.type === 'turn.started') onSessionActivity?.('started');
-					if (event.type === 'turn.completed') onSessionActivity?.('completed');
+					batcher.push(event);
 				}
+				batcher.flush();
 			} catch (error) {
 				if (!abortController.signal.aborted) {
+					batcher.flush();
 					store.getState().applyRuntimeEvent({
 						type: 'turn.failed',
 						turnId: request.id,
 						error: error instanceof Error ? error.message : String(error),
 					});
-				}
+				} else batcher.discard();
 			} finally {
+				batcher.discard();
 				if (controller.current === abortController) controller.current = null;
 			}
 		},

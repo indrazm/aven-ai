@@ -43,6 +43,34 @@ class LongStreamingRuntime implements AgentRuntime {
 	dispose(): void {}
 }
 
+class PausedStreamingRuntime implements AgentRuntime {
+	#resume: (() => void) | undefined;
+
+	release(): void {
+		this.#resume?.();
+	}
+
+	async *run(request: SubmitRequest): AsyncIterable<RuntimeEvent> {
+		yield {type: 'turn.started', request};
+		yield {
+			type: 'assistant.delta',
+			messageId: `assistant-${request.id}`,
+			delta: Array.from({length: 35}, (_, index) => `streamed line ${String(index + 1).padStart(2, '0')}`).join('\n'),
+		};
+		await new Promise<void>((resolve) => {
+			this.#resume = resolve;
+		});
+		yield {
+			type: 'assistant.delta',
+			messageId: `assistant-${request.id}`,
+			delta: Array.from({length: 5}, (_, index) => `\nstreamed line ${String(index + 36).padStart(2, '0')}`).join(''),
+		};
+		yield {type: 'turn.completed', turnId: request.id};
+	}
+
+	dispose(): void {}
+}
+
 describe('App shell and composer', () => {
 	afterEach(() => vi.useRealTimers());
 
@@ -56,7 +84,7 @@ describe('App shell and composer', () => {
 		expect(frame).not.toContain('Engineering agent for the terminal');
 		expect(frame).toContain('Mock · local');
 		expect(frame).toContain('│ ❯ ');
-		expect(frame).toContain('ctrl+c twice exits');
+		expect(frame).toContain('ctrl+c×2 exit');
 		unmount();
 	});
 
@@ -93,6 +121,16 @@ describe('App shell and composer', () => {
 		expect(lastFrame()).not.toContain('streamed line 01');
 		const bottomFirstLine = Number(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]);
 
+		stdin.write('\u001B[5~');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const pagedFirstLine = Number(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]);
+		expect(pagedFirstLine).toBeLessThan(bottomFirstLine);
+		expect(lastFrame()).toContain('pgup/pgdn scroll');
+
+		stdin.write('\u001B[6~');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(lastFrame()).toContain('streamed line 40');
+
 		stdin.write('\u000f');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		for (let index = 0; index < 5; index++) stdin.write('k');
@@ -106,6 +144,35 @@ describe('App shell and composer', () => {
 
 		expect(lastFrame()).toContain('streamed line 01');
 		expect(lastFrame()).not.toContain('streamed line 40');
+		unmount();
+	});
+
+	it('holds the reading position when new streamed output arrives', async () => {
+		const runtime = new PausedStreamingRuntime();
+		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
+		stdin.write('stream');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		stdin.write('\r');
+		await new Promise((resolve) => setTimeout(resolve, 80));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(lastFrame()).toContain('streamed line 35');
+
+		stdin.write('\u001B[5~');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const readingLine = /streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1];
+
+		runtime.release();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]).toBe(readingLine);
+		expect(lastFrame()).toContain('new output');
+		expect(lastFrame()).not.toContain('streamed line 40');
+
+		stdin.write('\u000f');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		stdin.write('G');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(lastFrame()).toContain('streamed line 40');
 		unmount();
 	});
 

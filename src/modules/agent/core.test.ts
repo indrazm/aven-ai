@@ -342,7 +342,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		);
 		expect(events).toContainEqual({
 			type: 'message.appended',
-			message: {id: 'diff-tool-file-prompt-edit-1', kind: 'diff', file: path, before: 'before\n', after: 'after\n'},
+			message: {id: 'diff-tool-file-prompt-2-edit-1', kind: 'diff', file: path, before: 'before\n', after: 'after\n'},
 		});
 		expect(await readFile(path, 'utf8')).toBe('after\n');
 		expect(await runtime.loadHistory()).toEqual(

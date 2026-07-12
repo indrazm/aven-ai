@@ -18,9 +18,27 @@ export const VirtualTranscript = forwardRef<TranscriptHandle, Props>(({messages,
 	const boxRef = useRef<DOMElement>(null);
 	const metrics = useBoxMetrics(boxRef);
 	const controller = useTranscriptController(messages, metrics, handleRef, active);
+	const visibleEnd = Math.min(controller.rowCount, controller.scrollTop + controller.visibleRows.length);
+	const position =
+		controller.rowCount === 0 ? '0/0' : `${controller.scrollTop + 1}–${visibleEnd}/${controller.rowCount}`;
+	const navigationHint = active
+		? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close'
+		: 'pgup/pgdn scroll · ctrl+o navigate';
 
 	return (
 		<Box ref={boxRef} flexDirection="column" flexBasis={0} flexGrow={1} flexShrink={1} minHeight={0} overflow="hidden">
+			<Box height={1} flexShrink={0} paddingX={1} justifyContent="space-between" overflow="hidden">
+				<Text color={active ? theme.accent : theme.muted} bold={active}>
+					{active ? 'TRANSCRIPT' : 'CONVERSATION'}
+				</Text>
+				<Text color={controller.hasUnseen ? theme.accent : theme.subtle} wrap="truncate-end">
+					{controller.hasUnseen
+						? `↓ new output · ${position} · ${active ? 'G/end' : 'ctrl+end'} to follow`
+						: controller.pinned
+							? navigationHint
+							: `${position} · ${navigationHint}`}
+				</Text>
+			</Box>
 			{controller.stickyRow ? (
 				<Box height={1} paddingX={1} backgroundColor={theme.codeBackground} overflow="hidden">
 					<Text color={theme.muted}>↑ </Text>
@@ -38,18 +56,6 @@ export const VirtualTranscript = forwardRef<TranscriptHandle, Props>(({messages,
 					selection={controller.selection}
 				/>
 			))}
-			{controller.unseen > 0 ? (
-				<Box position="absolute" bottom={0} width="100%" justifyContent="center">
-					<Text color={theme.accent} backgroundColor={theme.codeBackground} bold>
-						↓ {controller.unseen} new message{controller.unseen === 1 ? '' : 's'}
-					</Text>
-				</Box>
-			) : null}
-			{active ? (
-				<Box position="absolute" right={0} top={0}>
-					<Text color={theme.subtle}>TRANSCRIPT </Text>
-				</Box>
-			) : null}
 		</Box>
 	);
 });

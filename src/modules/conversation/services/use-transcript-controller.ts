@@ -1,4 +1,13 @@
-import {useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ForwardedRef} from 'react';
+import {
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ForwardedRef,
+} from 'react';
 import type {UseBoxMetricsResult} from 'ink';
 import stringWidth from 'string-width';
 import type {UiMessage} from '../types.js';
@@ -14,8 +23,12 @@ type Result = {
 	scrollTop: number;
 	stickyRow: TranscriptRow | undefined;
 	topPadding: number;
-	unseen: number;
+	hasUnseen: boolean;
+	pinned: boolean;
+	rowCount: number;
 };
+
+const HEADER_HEIGHT = 1;
 
 export const useTranscriptController = (
 	messages: readonly UiMessage[],
@@ -32,10 +45,10 @@ export const useTranscriptController = (
 	const scrollTopRef = useRef(0);
 	const [pinned, setPinned] = useState(true);
 	const pinnedRef = useRef(true);
-	const [unseen, setUnseen] = useState(0);
+	const [hasUnseen, setHasUnseen] = useState(false);
 	const [selection, setSelection] = useState<SelectionState | null>(null);
 	const selectionRef = useRef<SelectionState | null>(null);
-	const previousMessageCount = useRef(messages.length);
+	const previousMessages = useRef(messages);
 	const lastClick = useRef({time: 0, row: -1, column: -1, count: 0});
 
 	const stickyRow = useMemo(() => {
@@ -47,8 +60,11 @@ export const useTranscriptController = (
 		return undefined;
 	}, [pinned, rows, scrollTop]);
 	const stickyHeight = stickyRow ? 1 : 0;
-	const viewportHeight = Math.max(1, (metrics.height || 1) - stickyHeight);
+	const viewportHeight = Math.max(1, (metrics.height || 1) - HEADER_HEIGHT - stickyHeight);
 	const maxScroll = Math.max(0, rows.length - viewportHeight);
+	// Follow a growing response in the same render that adds its rows. Waiting
+	// for an effect produces a stale frame followed by a visible jump.
+	const visibleScrollTop = pinned ? maxScroll : Math.max(0, Math.min(maxScroll, scrollTop));
 	const topPadding = Math.max(0, viewportHeight - rows.length);
 
 	const updateScroll = useCallback(
@@ -60,22 +76,21 @@ export const useTranscriptController = (
 			const atBottom = clamped >= maximum;
 			setPinned(atBottom);
 			pinnedRef.current = atBottom;
-			if (atBottom) setUnseen(0);
+			if (atBottom) setHasUnseen(false);
 		},
 		[rows.length, viewportHeight],
 	);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!metrics.hasMeasured) return;
-		if (pinnedRef.current) updateScroll(maxScroll);
-		else updateScroll(scrollTopRef.current);
-	}, [maxScroll, metrics.hasMeasured, updateScroll]);
+		scrollTopRef.current = visibleScrollTop;
+	}, [metrics.hasMeasured, visibleScrollTop]);
 
 	useEffect(() => {
-		const added = messages.length - previousMessageCount.current;
-		if (added > 0 && !pinnedRef.current) setUnseen((value) => value + added);
-		previousMessageCount.current = messages.length;
-	}, [messages.length]);
+		const changed = messages !== previousMessages.current;
+		if (changed && !pinnedRef.current) setHasUnseen(true);
+		previousMessages.current = messages;
+	}, [messages]);
 
 	useEffect(() => {
 		selectionRef.current = selection;
@@ -92,7 +107,13 @@ export const useTranscriptController = (
 		handleRef,
 		() => ({
 			scrollBy: (amount) => updateScroll(scrollTopRef.current + amount),
-			pageBy: (direction) => updateScroll(scrollTopRef.current + direction * Math.max(1, viewportHeight - 2)),
+			pageBy: (direction) => {
+				const pageSize = Math.max(1, viewportHeight - 2);
+				const remaining = maxScroll - scrollTopRef.current;
+				updateScroll(
+					direction > 0 && remaining <= viewportHeight ? maxScroll : scrollTopRef.current + direction * pageSize,
+				);
+			},
 			scrollToTop: () => updateScroll(0),
 			scrollToBottom: () => updateScroll(maxScroll),
 			copySelection,
@@ -118,15 +139,18 @@ export const useTranscriptController = (
 					updateScroll(scrollTopRef.current + event.deltaY * 3);
 					return;
 				}
-				if (unseen > 0 && localY === metrics.height - 1 && event.type === 'down') {
+				if (hasUnseen && localY < HEADER_HEIGHT && event.type === 'down') {
 					updateScroll(maxScroll);
 					return;
 				}
 
-				const bodyY = localY - stickyHeight - topPadding;
-				const rowIndex = scrollTop + bodyY;
+				const bodyTop = HEADER_HEIGHT + stickyHeight + topPadding;
+				const bodyY = localY - bodyTop;
+				const rawRowIndex = visibleScrollTop + bodyY;
+				const dragging = Boolean(selectionRef.current?.dragging && (event.type === 'move' || event.type === 'up'));
+				const rowIndex = dragging ? Math.max(0, Math.min(rows.length - 1, rawRowIndex)) : rawRowIndex;
 				const row = rows[rowIndex];
-				if (!row || bodyY < 0) return;
+				if (!row || (!dragging && bodyY < 0)) return;
 				const column = Math.max(0, Math.min(localX, Math.max(0, stringWidth(rowText(row)) - 1)));
 
 				if (event.type === 'down' && event.button === 'left') {
@@ -149,7 +173,7 @@ export const useTranscriptController = (
 				}
 				if (event.type === 'move' && selectionRef.current?.dragging) {
 					setSelection((current) => (current ? {...current, focus: {row: rowIndex, column}} : current));
-					if (localY <= stickyHeight) updateScroll(scrollTopRef.current - 1);
+					if (localY < bodyTop) updateScroll(scrollTopRef.current - 1);
 					if (localY >= metrics.height - 1) updateScroll(scrollTopRef.current + 1);
 					return;
 				}
@@ -159,15 +183,17 @@ export const useTranscriptController = (
 					);
 				}
 			}),
-		[maxScroll, metrics, rows, scrollTop, stickyHeight, subscribeMouse, topPadding, unseen, updateScroll],
+		[hasUnseen, maxScroll, metrics, rows, stickyHeight, subscribeMouse, topPadding, updateScroll, visibleScrollTop],
 	);
 
 	return {
-		visibleRows: rows.slice(scrollTop, scrollTop + viewportHeight),
+		visibleRows: rows.slice(visibleScrollTop, visibleScrollTop + viewportHeight),
 		selection,
-		scrollTop,
+		scrollTop: visibleScrollTop,
 		stickyRow,
 		topPadding,
-		unseen,
+		hasUnseen,
+		pinned,
+		rowCount: rows.length,
 	};
 };

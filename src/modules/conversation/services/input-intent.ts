@@ -14,7 +14,7 @@ export const transcriptInputIntent = (input: string, key: Partial<Key>): Transcr
 	if (key.downArrow || input === 'j') return {type: 'scroll', amount: 1};
 	if (key.pageUp) return {type: 'page', direction: -1};
 	if (key.pageDown) return {type: 'page', direction: 1};
-	if (input === 'g') return {type: 'start'};
-	if (input === 'G') return {type: 'end'};
+	if (input === 'g' || key.home) return {type: 'start'};
+	if (input === 'G' || key.end) return {type: 'end'};
 	return {type: 'handled'};
 };

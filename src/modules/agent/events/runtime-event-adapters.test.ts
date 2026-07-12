@@ -3,11 +3,17 @@ import {describe, expect, it, vi} from 'vitest';
 import {messagesFromMemory} from './memory-message-adapter.js';
 import {eventToRuntimeEvents, type PendingToolCall} from './stream-event-adapter.js';
 
-const toolCallEvent = (id: string, name: string, arguments_: JsonValue): AgentStreamEvent => ({
+const toolCallEvent = (id: string, name: string, arguments_: JsonValue, turn = 1): AgentStreamEvent => ({
 	type: 'tool_call',
-	turn: 1,
+	turn,
 	toolCall: AssistantContent.toolCall(id, name, arguments_),
 });
+
+const toolCallEventWithCallId = (id: string, callId: string, name: string, arguments_: JsonValue): AgentStreamEvent => {
+	const event = toolCallEvent(id, name, arguments_);
+	if (event.type !== 'tool_call') throw new Error('Expected a tool call event');
+	return {...event, toolCall: {...event.toolCall, callId}};
+};
 
 const toolResultEvent = (id: string, name: string, result: unknown): AgentStreamEvent => ({
 	type: 'tool_result',
@@ -62,6 +68,80 @@ describe('runtime file-tool event adaptation', () => {
 		expect(JSON.stringify(completed)).not.toContain('secret');
 	});
 
+	it('correlates results by either stream id or provider call id before queue order', () => {
+		const queue: PendingToolCall[] = [];
+		eventToRuntimeEvents(
+			toolCallEventWithCallId('exec-stream', 'exec-provider', 'ExecCommand', {command: 'pwd'}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+		eventToRuntimeEvents(
+			toolCallEventWithCallId('read-stream', 'read-provider', 'Read', {file_path: '/workspace/file.txt'}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+
+		const completed = eventToRuntimeEvents(
+			toolResultEvent('read-stream', 'Read', {
+				status: 'success',
+				tool: 'Read',
+				file_path: '/workspace/file.txt',
+				content: 'content',
+				start_line: 1,
+				num_lines: 1,
+				total_lines: 1,
+				truncated: false,
+			}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+
+		expect(completed[0]).toEqual(
+			expect.objectContaining({
+				type: 'message.replaced',
+				message: expect.objectContaining({id: 'tool-request-1-read-stream', name: 'Read'}),
+			}),
+		);
+		expect(queue).toEqual([expect.objectContaining({id: 'tool-request-1-exec-stream', name: 'ExecCommand'})]);
+	});
+
+	it('keeps repeated provider tool ids unique across model turns', () => {
+		const queue: PendingToolCall[] = [];
+		const first = eventToRuntimeEvents(
+			toolCallEvent('tool-0', 'ExecCommand', {command: 'first'}, 1),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+		const second = eventToRuntimeEvents(
+			toolCallEvent('tool-0', 'Read', {file_path: '/workspace/file.txt'}, 2),
+			'request',
+			'assistant-turn-2',
+			queue,
+			'',
+		);
+
+		expect(first[1]).toEqual(
+			expect.objectContaining({
+				type: 'message.appended',
+				message: expect.objectContaining({id: 'tool-request-1-tool-0', name: 'ExecCommand'}),
+			}),
+		);
+		expect(second[1]).toEqual(
+			expect.objectContaining({
+				type: 'message.appended',
+				message: expect.objectContaining({id: 'tool-request-2-tool-0', name: 'Read'}),
+			}),
+		);
+	});
+
 	it('appends a transient diff after a successful mutation', () => {
 		const queue: PendingToolCall[] = [];
 		const path = '/workspace/file.txt';
@@ -87,7 +167,7 @@ describe('runtime file-tool event adaptation', () => {
 		expect(events.map((event) => event.type)).toEqual(['message.replaced', 'message.appended', 'status.changed']);
 		expect(events[1]).toEqual({
 			type: 'message.appended',
-			message: {id: 'diff-tool-request-edit-1', kind: 'diff', file: path, before: 'old', after: 'new'},
+			message: {id: 'diff-tool-request-1-edit-1', kind: 'diff', file: path, before: 'old', after: 'new'},
 		});
 	});
 

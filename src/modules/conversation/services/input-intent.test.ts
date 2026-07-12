@@ -11,6 +11,8 @@ describe('transcript input intents', () => {
 		expect(transcriptInputIntent('', {pageDown: true})).toEqual({type: 'page', direction: 1});
 		expect(transcriptInputIntent('g', {})).toEqual({type: 'start'});
 		expect(transcriptInputIntent('G', {})).toEqual({type: 'end'});
+		expect(transcriptInputIntent('', {home: true})).toEqual({type: 'start'});
+		expect(transcriptInputIntent('', {end: true})).toEqual({type: 'end'});
 		expect(transcriptInputIntent('q', {})).toEqual({type: 'close'});
 		expect(transcriptInputIntent('', {escape: true})).toEqual({type: 'close'});
 		expect(transcriptInputIntent('o', {ctrl: true})).toEqual({type: 'close'});

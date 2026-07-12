@@ -1,5 +1,5 @@
 import type {UiMessage} from '../types.js';
-import {messageToRows} from './message-rows.js';
+import {messageToRows, shouldSeparateMessages} from './message-rows.js';
 import type {TranscriptRow} from '../types.js';
 
 type RowRenderer = (message: UiMessage, width: number, expanded: boolean) => TranscriptRow[];
@@ -28,24 +28,18 @@ export class TranscriptRowCache {
 
 		const activeIds = new Set<string>();
 		const rows: TranscriptRow[] = [];
+		let previous: UiMessage | undefined;
 		for (const message of messages) {
 			activeIds.add(message.id);
-			if (rows.length > 0) {
-				rows.push({
-					id: `${message.id}:gap`,
-					messageId: message.id,
-					messageKind: message.kind,
-					segments: [{text: ''}],
-				});
-			}
 			const cached = this.#entries.get(message.id);
-			if (cached?.message === message) {
-				rows.push(...cached.rows);
-				continue;
+			const rendered = cached?.message === message ? cached.rows : this.#render(message, width, expanded);
+			if (cached?.message !== message) this.#entries.set(message.id, {message, rows: rendered});
+			if (rendered.length === 0) continue;
+			if (previous && shouldSeparateMessages(previous, message)) {
+				rows.push({id: `${message.id}:gap`, messageId: message.id, messageKind: message.kind, segments: [{text: ''}]});
 			}
-			const rendered = this.#render(message, width, expanded);
-			this.#entries.set(message.id, {message, rows: rendered});
 			rows.push(...rendered);
+			previous = message;
 		}
 
 		for (const id of this.#entries.keys()) {
