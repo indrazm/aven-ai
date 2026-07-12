@@ -27,6 +27,22 @@ class ToolOutputRuntime implements AgentRuntime {
 	dispose(): void {}
 }
 
+class LongStreamingRuntime implements AgentRuntime {
+	async *run(request: SubmitRequest): AsyncIterable<RuntimeEvent> {
+		yield {type: 'turn.started', request};
+		for (let index = 1; index <= 40; index++) {
+			yield {
+				type: 'assistant.delta',
+				messageId: `assistant-${request.id}`,
+				delta: `${index === 1 ? '' : '\n'}streamed line ${String(index).padStart(2, '0')}`,
+			};
+		}
+		yield {type: 'turn.completed', turnId: request.id};
+	}
+
+	dispose(): void {}
+}
+
 describe('App shell and composer', () => {
 	afterEach(() => vi.useRealTimers());
 
@@ -62,6 +78,34 @@ describe('App shell and composer', () => {
 		stdin.write('\u001B[<65;20;8M');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(lastFrame()).not.toContain('[<65;20;8M');
+		unmount();
+	});
+
+	it('scrolls through the full transcript after a long streamed response completes', async () => {
+		const {lastFrame, stdin, unmount} = render(<App runtime={new LongStreamingRuntime()} />);
+		stdin.write('stream');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		stdin.write('\r');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(lastFrame()).toContain('streamed line 40');
+		expect(lastFrame()).not.toContain('streamed line 01');
+		const bottomFirstLine = Number(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]);
+
+		stdin.write('\u000f');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		for (let index = 0; index < 5; index++) stdin.write('k');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const scrolledFirstLine = Number(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]);
+		expect(scrolledFirstLine).toBe(bottomFirstLine - 5);
+		expect(lastFrame()).not.toContain('streamed line 40');
+
+		stdin.write('g');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(lastFrame()).toContain('streamed line 01');
+		expect(lastFrame()).not.toContain('streamed line 40');
 		unmount();
 	});
 

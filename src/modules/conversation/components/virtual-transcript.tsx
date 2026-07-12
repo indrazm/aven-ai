@@ -20,7 +20,7 @@ export const VirtualTranscript = forwardRef<TranscriptHandle, Props>(({messages,
 	const controller = useTranscriptController(messages, metrics, handleRef, active);
 
 	return (
-		<Box ref={boxRef} flexDirection="column" flexGrow={1} overflow="hidden">
+		<Box ref={boxRef} flexDirection="column" flexBasis={0} flexGrow={1} flexShrink={1} minHeight={0} overflow="hidden">
 			{controller.stickyRow ? (
 				<Box height={1} paddingX={1} backgroundColor={theme.codeBackground} overflow="hidden">
 					<Text color={theme.muted}>↑ </Text>

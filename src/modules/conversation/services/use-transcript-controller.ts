@@ -28,6 +28,8 @@ export const useTranscriptController = (
 	const rowCache = useRef(new TranscriptRowCache());
 	const rows = useMemo(() => rowCache.current.rowsFor(messages, width, expanded), [expanded, messages, width]);
 	const [scrollTop, setScrollTop] = useState(0);
+	// A terminal input chunk can contain several wheel events before React renders again.
+	const scrollTopRef = useRef(0);
 	const [pinned, setPinned] = useState(true);
 	const pinnedRef = useRef(true);
 	const [unseen, setUnseen] = useState(0);
@@ -53,6 +55,7 @@ export const useTranscriptController = (
 		(next: number) => {
 			const maximum = Math.max(0, rows.length - viewportHeight);
 			const clamped = Math.max(0, Math.min(maximum, next));
+			scrollTopRef.current = clamped;
 			setScrollTop(clamped);
 			const atBottom = clamped >= maximum;
 			setPinned(atBottom);
@@ -65,8 +68,8 @@ export const useTranscriptController = (
 	useEffect(() => {
 		if (!metrics.hasMeasured) return;
 		if (pinnedRef.current) updateScroll(maxScroll);
-		else updateScroll(scrollTop);
-	}, [maxScroll, metrics.hasMeasured, scrollTop, updateScroll]);
+		else updateScroll(scrollTopRef.current);
+	}, [maxScroll, metrics.hasMeasured, updateScroll]);
 
 	useEffect(() => {
 		const added = messages.length - previousMessageCount.current;
@@ -88,8 +91,8 @@ export const useTranscriptController = (
 	useImperativeHandle(
 		handleRef,
 		() => ({
-			scrollBy: (amount) => updateScroll(scrollTop + amount),
-			pageBy: (direction) => updateScroll(scrollTop + direction * Math.max(1, viewportHeight - 2)),
+			scrollBy: (amount) => updateScroll(scrollTopRef.current + amount),
+			pageBy: (direction) => updateScroll(scrollTopRef.current + direction * Math.max(1, viewportHeight - 2)),
 			scrollToTop: () => updateScroll(0),
 			scrollToBottom: () => updateScroll(maxScroll),
 			copySelection,
@@ -101,7 +104,7 @@ export const useTranscriptController = (
 			hasSelection: () => Boolean(selectionRef.current),
 			isPinned: () => pinnedRef.current,
 		}),
-		[copySelection, maxScroll, scrollTop, updateScroll, viewportHeight],
+		[copySelection, maxScroll, updateScroll, viewportHeight],
 	);
 
 	useEffect(
@@ -112,7 +115,7 @@ export const useTranscriptController = (
 				const localY = event.y - metrics.top;
 				if (localX < 0 || localX >= metrics.width || localY < 0 || localY >= metrics.height) return;
 				if (event.type === 'wheel') {
-					updateScroll(scrollTop + event.deltaY * 3);
+					updateScroll(scrollTopRef.current + event.deltaY * 3);
 					return;
 				}
 				if (unseen > 0 && localY === metrics.height - 1 && event.type === 'down') {
@@ -146,8 +149,8 @@ export const useTranscriptController = (
 				}
 				if (event.type === 'move' && selectionRef.current?.dragging) {
 					setSelection((current) => (current ? {...current, focus: {row: rowIndex, column}} : current));
-					if (localY <= stickyHeight) updateScroll(scrollTop - 1);
-					if (localY >= metrics.height - 1) updateScroll(scrollTop + 1);
+					if (localY <= stickyHeight) updateScroll(scrollTopRef.current - 1);
+					if (localY >= metrics.height - 1) updateScroll(scrollTopRef.current + 1);
 					return;
 				}
 				if (event.type === 'up' && selectionRef.current?.dragging) {
