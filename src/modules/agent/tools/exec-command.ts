@@ -5,7 +5,7 @@ import {execResultSchema} from '../events/tool-message-adapter.js';
 
 export const createExecCommandTool = (pty: PtyRunner, signal: AbortSignal) =>
 	createTool({
-		name: 'exec_command',
+		name: 'ExecCommand',
 		description: 'Run a shell command in the current workspace using a PTY and return its exit status and output.',
 		input: z.object({command: z.string().min(1).describe('The shell command to execute.')}),
 		output: execResultSchema,

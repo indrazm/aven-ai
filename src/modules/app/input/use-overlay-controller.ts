@@ -4,7 +4,7 @@ import type {Key} from 'ink';
 import type {OverlayItem, OverlayRoute} from '../../overlays/index.js';
 import {buildOverlayItems} from '../../overlays/index.js';
 import {overlaySelectionIntent} from '../../overlays/index.js';
-import {providerCatalog as providers} from '../../providers/index.js';
+import {normalizeProviderBaseUrl, providerCatalog as providers} from '../../providers/index.js';
 import {normalizeInput} from '../../composer/index.js';
 import {useAppStore, useAppStoreApi} from '../components/app-provider.js';
 import type {RuntimeConnection} from '../services/use-runtime-connection.js';
@@ -52,7 +52,7 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 	);
 
 	const items = useMemo(() => {
-		if (!overlay?.query || overlay.route === 'setupKey') return baseItems;
+		if (!overlay?.query || overlay.route === 'setupKey' || overlay.route === 'setupBaseUrl') return baseItems;
 		return new Fuse(baseItems, {keys: ['label', 'description'], threshold: 0.4})
 			.search(overlay.query)
 			.map((result) => result.item);
@@ -98,12 +98,23 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 				return true;
 			}
 			if (key.return) {
+				if (overlay.route === 'setupBaseUrl') {
+					const provider = overlay.provider;
+					if (!provider || !overlay.query.trim()) return true;
+					try {
+						const baseUrl = normalizeProviderBaseUrl(provider, overlay.query);
+						actions.setOverlay({route: 'setupKey', provider, baseUrl, query: '', selectedIndex: 0});
+					} catch (error) {
+						appendConnectionMessage('error', error instanceof Error ? error.message : 'Invalid workspace URL.');
+					}
+					return true;
+				}
 				if (overlay.route === 'setupKey') {
 					const provider = overlay.provider;
 					const apiKey = overlay.query.trim();
 					if (!provider || !apiKey || connection.state.status === 'connecting') return true;
 					void connection
-						.setup(provider, apiKey)
+						.setup(provider, {apiKey, ...(overlay.baseUrl ? {baseUrl: overlay.baseUrl} : {})})
 						.then((connected) => {
 							store.getState().setOverlay(null);
 							appendConnectionMessage('success', `Connected to ${connected.providerLabel} · ${connected.model}`);
@@ -125,7 +136,12 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 						if (switched) store.getState().setOverlay(null);
 					});
 				} else if (intent.type === 'requestApiKey') {
-					actions.setOverlay({route: 'setupKey', provider: intent.provider, query: '', selectedIndex: 0});
+					actions.setOverlay({
+						route: providers[intent.provider].baseUrl ? 'setupBaseUrl' : 'setupKey',
+						provider: intent.provider,
+						query: '',
+						selectedIndex: 0,
+					});
 				} else if (intent.type === 'connectProvider') {
 					void connection
 						.connect(intent.provider)
@@ -175,7 +191,7 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 		(text: string): boolean => {
 			const current = store.getState().overlay;
 			if (!current) return false;
-			if (current.route === 'setupKey') {
+			if (current.route === 'setupKey' || current.route === 'setupBaseUrl') {
 				store
 					.getState()
 					.setOverlay((value) => (value ? {...value, query: value.query + normalizeInput(text).trim()} : value));

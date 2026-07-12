@@ -1,8 +1,15 @@
 import type {UiMessage} from '../conversation/index.js';
-import type {ConnectionState, ModelStatus, ProviderId, ProviderStatus} from '../providers/index.js';
+import type {
+	ConnectionState,
+	ModelStatus,
+	ProviderCredentials,
+	ProviderId,
+	ProviderStatus,
+} from '../providers/index.js';
 import type {ProjectSessionSummary} from '../sessions/index.js';
 
 export type {ConnectionState, ModelStatus, ProviderStatus} from '../providers/index.js';
+export type {ProviderCredentials} from '../providers/index.js';
 
 export type InputMode = 'prompt' | 'bash';
 export type AgentStatus = 'idle' | 'thinking' | 'runningTool' | 'waitingPermission' | 'error';
@@ -28,7 +35,7 @@ export interface ConfigurableAgentRuntime extends AgentRuntime {
 	modelStatuses(): Promise<ModelStatus[]>;
 	restore(): Promise<ConnectionState>;
 	connect(provider: ProviderId): Promise<ConnectionState>;
-	setup(provider: ProviderId, apiKey: string): Promise<ConnectionState>;
+	setup(provider: ProviderId, credentials: ProviderCredentials): Promise<ConnectionState>;
 	selectModel(model: string): Promise<ConnectionState>;
 	loadHistory(): Promise<UiMessage[]>;
 }

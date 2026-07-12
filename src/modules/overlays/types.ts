@@ -7,6 +7,7 @@ export type OverlayRoute =
 	| 'commands'
 	| 'connect'
 	| 'setupProvider'
+	| 'setupBaseUrl'
 	| 'setupKey'
 	| 'model'
 	| 'theme'
@@ -17,6 +18,7 @@ export type OverlayState = {
 	query: string;
 	selectedIndex: number;
 	provider?: ProviderId;
+	baseUrl?: string;
 };
 
 export type OverlayItem = {

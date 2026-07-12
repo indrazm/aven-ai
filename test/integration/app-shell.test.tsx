@@ -14,7 +14,7 @@ class ToolOutputRuntime implements AgentRuntime {
 			message: {
 				id: `tool-${request.id}`,
 				kind: 'tool',
-				name: 'exec_command',
+				name: 'ExecCommand',
 				status: 'success',
 				summary: 'print output',
 				detail: Array.from({length: 12}, (_, index) => `tool output ${index + 1}`).join('\n'),

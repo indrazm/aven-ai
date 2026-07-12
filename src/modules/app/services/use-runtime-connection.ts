@@ -4,6 +4,7 @@ import type {
 	ConfigurableAgentRuntime,
 	ConnectionState,
 	ModelStatus,
+	ProviderCredentials,
 	ProviderStatus,
 } from '../../agent/index.js';
 import {isConfigurableRuntime, isProjectSessionRuntime} from '../../agent/index.js';
@@ -16,7 +17,7 @@ export type RuntimeConnection = {
 	providers: readonly ProviderStatus[];
 	models: readonly ModelStatus[];
 	connect(provider: ProviderId): Promise<ConnectionState>;
-	setup(provider: ProviderId, apiKey: string): Promise<ConnectionState>;
+	setup(provider: ProviderId, credentials: ProviderCredentials): Promise<ConnectionState>;
 	selectModel(model: string): Promise<ConnectionState>;
 	refreshProviders(): Promise<void>;
 	refreshModels(): Promise<void>;
@@ -76,11 +77,12 @@ export const useRuntimeConnection = (runtime: AgentRuntime): RuntimeConnection =
 		async (provider: ProviderId) => {
 			if (!configurableRuntime) throw new Error('Runtime does not support provider configuration');
 			setModelStatuses([]);
+			const model = providerStatuses.find((status) => status.id === provider)?.model;
 			setState({
 				status: 'connecting',
 				provider,
 				providerLabel: providers[provider].label,
-				model: providers[provider].model,
+				...(model ? {model} : {}),
 			});
 			try {
 				const connected = await configurableRuntime.connect(provider);
@@ -96,21 +98,22 @@ export const useRuntimeConnection = (runtime: AgentRuntime): RuntimeConnection =
 				throw error;
 			}
 		},
-		[configurableRuntime, loadLegacyRuntimeHistory, refreshModels, refreshProviders, store],
+		[configurableRuntime, loadLegacyRuntimeHistory, providerStatuses, refreshModels, refreshProviders, store],
 	);
 
 	const setup = useCallback(
-		async (provider: ProviderId, apiKey: string) => {
+		async (provider: ProviderId, credentials: ProviderCredentials) => {
 			if (!configurableRuntime) throw new Error('Runtime does not support provider configuration');
 			setModelStatuses([]);
+			const model = providerStatuses.find((status) => status.id === provider)?.model;
 			setState({
 				status: 'connecting',
 				provider,
 				providerLabel: providers[provider].label,
-				model: providers[provider].model,
+				...(model ? {model} : {}),
 			});
 			try {
-				const connected = await configurableRuntime.setup(provider, apiKey);
+				const connected = await configurableRuntime.setup(provider, credentials);
 				setState(connected);
 				store.getState().recover();
 				await refreshProviders();
@@ -123,7 +126,7 @@ export const useRuntimeConnection = (runtime: AgentRuntime): RuntimeConnection =
 				throw error;
 			}
 		},
-		[configurableRuntime, loadLegacyRuntimeHistory, refreshModels, refreshProviders, store],
+		[configurableRuntime, loadLegacyRuntimeHistory, providerStatuses, refreshModels, refreshProviders, store],
 	);
 
 	const selectModel = useCallback(

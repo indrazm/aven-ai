@@ -12,6 +12,7 @@ export {
 	type ModelStatus,
 	type ProjectSessionRuntime,
 	type ProjectSessionSwitch,
+	type ProviderCredentials,
 	type ProviderStatus,
 	type RuntimeEvent,
 	type SubmitRequest,

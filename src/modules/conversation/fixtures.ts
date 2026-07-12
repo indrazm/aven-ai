@@ -12,7 +12,7 @@ export const demoMessages: UiMessage[] = [
 	{
 		id: 'tool-1',
 		kind: 'tool',
-		name: 'exec_command',
+		name: 'ExecCommand',
 		status: 'success',
 		summary: 'pwd',
 		detail: '/workspace',

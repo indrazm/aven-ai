@@ -8,6 +8,7 @@ export const overlayTitle: Record<OverlayRoute, string> = {
 	commands: 'Commands',
 	connect: 'Connect provider',
 	setupProvider: 'Set up provider',
+	setupBaseUrl: 'Enter workspace URL',
 	setupKey: 'Enter API key',
 	model: 'Model',
 	theme: 'Theme',
@@ -29,6 +30,7 @@ const items: Record<OverlayRoute, readonly OverlayItem[]> = {
 	sessions: [],
 	connect: [],
 	setupProvider: [],
+	setupBaseUrl: [],
 	setupKey: [],
 	model: [],
 	theme: [

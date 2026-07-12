@@ -20,7 +20,7 @@ describe('overlay models', () => {
 		]);
 		expect(buildOverlayItems({route: 'sessions', query: '', selectedIndex: 0}, context)[0]?.label).toBe('Unavailable');
 		expect(buildOverlayItems({route: 'connect', query: '', selectedIndex: 0}, context)[0]?.description).toContain(
-			'API key required',
+			'credentials required',
 		);
 	});
 

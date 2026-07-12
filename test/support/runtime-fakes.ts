@@ -1,6 +1,7 @@
 import type {UiMessage} from '../../src/modules/conversation/index.js';
 import type {ProjectSessionSummary} from '../../src/modules/sessions/index.js';
-import type {ProviderId} from '../../src/modules/providers/index.js';
+import type {ProviderCredentials, ProviderId} from '../../src/modules/providers/index.js';
+import {providerCatalog, providerIds} from '../../src/modules/providers/index.js';
 import type {RuntimeEvent} from '../../src/modules/agent/index.js';
 import type {SubmitRequest} from '../../src/modules/agent/index.js';
 import type {
@@ -16,6 +17,7 @@ import {MockRuntime} from '../../src/modules/agent/index.js';
 export class SetupRuntime implements ConfigurableAgentRuntime {
 	readonly mock = new MockRuntime(0);
 	lastApiKey: string | undefined;
+	lastCredentials: ProviderCredentials | undefined;
 	connection: ConnectionState = {status: 'disconnected'};
 	configured = false;
 	selectedModel = 'gpt-5';
@@ -29,16 +31,13 @@ export class SetupRuntime implements ConfigurableAgentRuntime {
 	}
 
 	async providerStatuses(): Promise<ProviderStatus[]> {
-		return [
-			{
-				id: 'openai',
-				label: 'OpenAI',
-				model: 'gpt-5',
-				configured: this.configured,
-				active: this.connection.provider === 'openai',
-			},
-			{id: 'anthropic', label: 'Anthropic', model: 'claude-sonnet-4-20250514', configured: false, active: false},
-		];
+		return providerIds.map((id) => ({
+			id,
+			label: providerCatalog[id].label,
+			...(id === 'openai' ? {model: 'gpt-5'} : {}),
+			configured: id === 'openai' && this.configured,
+			active: this.connection.provider === id,
+		}));
 	}
 
 	async modelStatuses(): Promise<ModelStatus[]> {
@@ -53,12 +52,18 @@ export class SetupRuntime implements ConfigurableAgentRuntime {
 	}
 
 	async connect(provider: ProviderId): Promise<ConnectionState> {
-		this.connection = {status: 'connected', provider, providerLabel: 'OpenAI', model: 'gpt-5'};
+		this.connection = {
+			status: 'connected',
+			provider,
+			providerLabel: providerCatalog[provider].label,
+			model: provider === 'openai' ? 'gpt-5' : 'test-model',
+		};
 		return this.connection;
 	}
 
-	async setup(provider: ProviderId, apiKey: string): Promise<ConnectionState> {
-		this.lastApiKey = apiKey;
+	async setup(provider: ProviderId, credentials: ProviderCredentials): Promise<ConnectionState> {
+		this.lastApiKey = credentials.apiKey;
+		this.lastCredentials = credentials;
 		this.configured = true;
 		return this.connect(provider);
 	}

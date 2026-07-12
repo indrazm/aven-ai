@@ -44,10 +44,10 @@ export const buildOverlayItems = (
 		return context.connection.providers.map((provider) => ({
 			label: provider.label,
 			description: provider.active
-				? `${provider.model} · connected`
+				? `${provider.model ? `${provider.model} · ` : ''}connected`
 				: provider.configured
-					? `${provider.model} · configured`
-					: `${provider.model} · API key required`,
+					? `${provider.model ? `${provider.model} · ` : ''}configured`
+					: 'credentials required',
 			value: provider.id,
 		}));
 	}

@@ -2,36 +2,47 @@ import {access, mkdir, mkdtemp, readFile, stat, writeFile} from 'node:fs/promise
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {parse} from 'smol-toml';
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {providerIds} from '../provider-definitions/index.js';
 import {ConfigStore} from './config-store.js';
 
 const directories: string[] = [];
 
-const temporaryConfig = async (environment: NodeJS.ProcessEnv = {}) => {
+const temporaryConfig = async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'aven-config-'));
 	directories.push(directory);
 	const path = join(directory, 'nested', 'config.toml');
-	return {path, store: new ConfigStore(path, environment)};
+	return {path, store: new ConfigStore(path)};
 };
 
 afterEach(async () => {
 	const {rm} = await import('node:fs/promises');
+	vi.unstubAllEnvs();
 	await Promise.all(directories.splice(0).map((directory) => rm(directory, {recursive: true, force: true})));
 });
 
 describe('ConfigStore', () => {
-	it('uses environment keys until a persisted key overrides them', async () => {
-		const {store} = await temporaryConfig({OPENAI_API_KEY: 'environment-key'});
-		expect(await store.resolvedKey('openai')).toBe('environment-key');
+	it('resolves credentials only after they are persisted', async () => {
+		const {store} = await temporaryConfig();
+		expect(await store.resolvedCredentials('openai')).toBeUndefined();
 
-		await store.saveConnection('openai', 'persisted-key');
-		expect(await store.resolvedKey('openai')).toBe('persisted-key');
+		await store.saveConnection('openai', {apiKey: 'persisted-key'});
+		expect(await store.resolvedCredentials('openai')).toEqual({apiKey: 'persisted-key'});
 		expect((await store.load()).activeProvider).toBe('openai');
+	});
+
+	it('does not use provider environment variables', async () => {
+		vi.stubEnv('OPENAI_API_KEY', 'environment-key');
+		vi.stubEnv('ANTHROPIC_API_KEY', 'environment-key');
+		const {store} = await temporaryConfig();
+
+		expect(await store.resolvedCredentials('openai')).toBeUndefined();
+		expect(await store.resolvedCredentials('anthropic')).toBeUndefined();
 	});
 
 	it('writes credentials with owner-only permissions', async () => {
 		const {path, store} = await temporaryConfig();
-		await store.saveConnection('anthropic', 'secret');
+		await store.saveConnection('anthropic', {apiKey: 'secret'});
 
 		expect(parse(await readFile(path, 'utf8'))).toMatchObject({
 			version: 1,
@@ -48,9 +59,30 @@ describe('ConfigStore', () => {
 		await expect(store.load()).rejects.toThrow('Invalid TOML');
 	});
 
-	it('ignores environment keys containing whitespace', async () => {
-		const {store} = await temporaryConfig({OPENAI_API_KEY: 'invalid key'});
-		expect(await store.resolvedKey('openai')).toBeUndefined();
+	it('requires both a token and workspace URL for Databricks', async () => {
+		const {store} = await temporaryConfig();
+		await store.saveConnection('databricks', {apiKey: 'token'});
+		expect(await store.resolvedCredentials('databricks')).toBeUndefined();
+
+		await store.saveConnection('databricks', {baseUrl: 'https://dbc.example.com/ai-gateway/mlflow/v1'});
+		expect(await store.resolvedCredentials('databricks')).toEqual({
+			apiKey: 'token',
+			baseUrl: 'https://dbc.example.com/ai-gateway/mlflow/v1',
+		});
+	});
+
+	it('round-trips credentials for every provider id', async () => {
+		const {store} = await temporaryConfig();
+		for (const provider of providerIds) {
+			await store.saveConnection(provider, {
+				apiKey: `secret-${provider}`,
+				...(provider === 'databricks' ? {baseUrl: 'https://dbc.example.com/ai-gateway/mlflow/v1'} : {}),
+			});
+		}
+
+		const config = await store.load();
+		expect(Object.keys(config.apiKeys)).toEqual(providerIds);
+		for (const provider of providerIds) expect(await store.hasCredentials(provider)).toBe(true);
 	});
 
 	it('caches provider models and persists the selected model in TOML', async () => {

@@ -6,7 +6,7 @@ import {messageToRows, messagesToRows, rowText, wrapSegments} from './message-ro
 const toolMessage = (status: ToolMessage['status'], lineCount: number): ToolMessage => ({
 	id: `tool-${status}`,
 	kind: 'tool',
-	name: 'exec_command',
+	name: 'ExecCommand',
 	status,
 	summary: 'print output',
 	detail: Array.from({length: lineCount}, (_, index) => `output ${index + 1}`).join('\n'),
@@ -38,7 +38,7 @@ describe('transcript row model', () => {
 	it('collapses successful tool details to three visual rows with an accurate expansion hint', () => {
 		const rows = messageToRows(toolMessage('success', 8), 80);
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'⎿ exec_command(print output)',
+			'ExecCommand(print output)',
 			'  ⎿  output 1',
 			'  ⎿  output 2',
 			'  ⎿  output 3',
@@ -49,7 +49,7 @@ describe('transcript row model', () => {
 	it('shows four successful detail rows when only one row would be hidden', () => {
 		const rows = messageToRows(toolMessage('success', 4), 80);
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'⎿ exec_command(print output)',
+			'ExecCommand(print output)',
 			'  ⎿  output 1',
 			'  ⎿  output 2',
 			'  ⎿  output 3',

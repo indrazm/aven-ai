@@ -4,56 +4,43 @@ import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {parse, stringify} from 'smol-toml';
 import {z} from 'zod';
+import {providerCatalog, providerIds, type ProviderId} from '../provider-definitions/index.js';
 
-export type ConfigProviderId = 'openai' | 'anthropic';
+export type ConfigProviderId = ProviderId;
 
-const providers: Record<ConfigProviderId, {label: string; environmentKey: 'OPENAI_API_KEY' | 'ANTHROPIC_API_KEY'}> = {
-	openai: {label: 'OpenAI', environmentKey: 'OPENAI_API_KEY'},
-	anthropic: {label: 'Anthropic', environmentKey: 'ANTHROPIC_API_KEY'},
-};
-
+const providerIdSchema = z.enum(providerIds);
 const apiKeySchema = z.string().trim().min(1).regex(/^\S+$/u);
+const baseUrlSchema = z.string().trim().min(1).regex(/^\S+$/u);
 const modelIdSchema = z.string().trim().min(1);
-const providerModelsSchema = z
-	.object({
-		openai: z.array(modelIdSchema).optional(),
-		anthropic: z.array(modelIdSchema).optional(),
-	})
-	.default({});
-const selectedModelsSchema = z
-	.object({
-		openai: modelIdSchema.optional(),
-		anthropic: modelIdSchema.optional(),
-	})
-	.default({});
+const apiKeysSchema = z.partialRecord(providerIdSchema, apiKeySchema).default({});
+const baseUrlsSchema = z.partialRecord(providerIdSchema, baseUrlSchema).default({});
+const providerModelsSchema = z.partialRecord(providerIdSchema, z.array(modelIdSchema)).default({});
+const selectedModelsSchema = z.partialRecord(providerIdSchema, modelIdSchema).default({});
 
 const configSchema = z.object({
 	version: z.literal(1),
-	activeProvider: z.enum(['openai', 'anthropic']).optional(),
-	apiKeys: z
-		.object({
-			openai: apiKeySchema.optional(),
-			anthropic: apiKeySchema.optional(),
-		})
-		.default({}),
+	activeProvider: providerIdSchema.optional(),
+	apiKeys: apiKeysSchema,
+	baseUrls: baseUrlsSchema,
 	models: providerModelsSchema,
 	selectedModels: selectedModelsSchema,
 });
 
 const tomlConfigSchema = z.object({
 	version: z.literal(1),
-	active_provider: z.enum(['openai', 'anthropic']).optional(),
-	api_keys: z
-		.object({
-			openai: apiKeySchema.optional(),
-			anthropic: apiKeySchema.optional(),
-		})
-		.default({}),
+	active_provider: providerIdSchema.optional(),
+	api_keys: apiKeysSchema,
+	base_urls: baseUrlsSchema,
 	models: providerModelsSchema,
 	selected_models: selectedModelsSchema,
 });
 
 export type AvenConfig = z.infer<typeof configSchema>;
+
+export type StoredProviderCredentials = {
+	apiKey: string;
+	baseUrl?: string;
+};
 
 export const defaultConfigDirectory = (): string =>
 	join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'aven-ai');
@@ -61,7 +48,13 @@ export const defaultConfigDirectory = (): string =>
 export const defaultConfigPath = (): string => join(defaultConfigDirectory(), 'config.toml');
 export const defaultLegacyConfigPath = (): string => join(defaultConfigDirectory(), 'config.json');
 
-const emptyConfig = (): AvenConfig => ({version: 1, apiKeys: {}, models: {}, selectedModels: {}});
+const emptyConfig = (): AvenConfig => ({
+	version: 1,
+	apiKeys: {},
+	baseUrls: {},
+	models: {},
+	selectedModels: {},
+});
 
 const fromToml = (value: unknown, path: string): AvenConfig => {
 	const parsed = tomlConfigSchema.safeParse(value);
@@ -70,6 +63,7 @@ const fromToml = (value: unknown, path: string): AvenConfig => {
 		version: 1,
 		...(parsed.data.active_provider ? {activeProvider: parsed.data.active_provider} : {}),
 		apiKeys: parsed.data.api_keys,
+		baseUrls: parsed.data.base_urls,
 		models: parsed.data.models,
 		selectedModels: parsed.data.selected_models,
 	};
@@ -80,28 +74,24 @@ const toToml = (config: AvenConfig): string =>
 		version: config.version,
 		...(config.activeProvider ? {active_provider: config.activeProvider} : {}),
 		api_keys: config.apiKeys,
+		base_urls: config.baseUrls,
 		models: config.models,
 		selected_models: config.selectedModels,
 	});
 
 export type SaveConnectionOptions = {
 	apiKey?: string;
+	baseUrl?: string;
 	models?: readonly string[];
 	selectedModel?: string;
 };
 
 export class ConfigStore {
 	readonly path: string;
-	readonly environment: NodeJS.ProcessEnv;
 	readonly legacyPath: string;
 
-	constructor(
-		path = defaultConfigPath(),
-		environment: NodeJS.ProcessEnv = process.env,
-		legacyPath = join(dirname(path), 'config.json'),
-	) {
+	constructor(path = defaultConfigPath(), legacyPath = join(dirname(path), 'config.json')) {
 		this.path = path;
-		this.environment = environment;
 		this.legacyPath = legacyPath;
 	}
 
@@ -124,28 +114,31 @@ export class ConfigStore {
 		}
 	}
 
-	async resolvedKey(provider: ConfigProviderId): Promise<string | undefined> {
+	async resolvedCredentials(provider: ConfigProviderId): Promise<StoredProviderCredentials | undefined> {
 		const config = await this.load();
-		const key = config.apiKeys[provider] ?? this.environment[providers[provider].environmentKey];
-		const parsed = apiKeySchema.safeParse(key);
-		return parsed.success ? parsed.data : undefined;
+		const apiKey = apiKeySchema.safeParse(config.apiKeys[provider]);
+		if (!apiKey.success) return undefined;
+		const baseUrl = baseUrlSchema.safeParse(config.baseUrls[provider]);
+		if (providerCatalog[provider].baseUrl?.required && !baseUrl.success) return undefined;
+		return {apiKey: apiKey.data, ...(baseUrl.success ? {baseUrl: baseUrl.data} : {})};
 	}
 
-	async hasKey(provider: ConfigProviderId): Promise<boolean> {
-		return Boolean(await this.resolvedKey(provider));
+	async hasCredentials(provider: ConfigProviderId): Promise<boolean> {
+		return Boolean(await this.resolvedCredentials(provider));
 	}
 
-	async saveConnection(provider: ConfigProviderId, input: string | SaveConnectionOptions = {}): Promise<AvenConfig> {
+	async saveConnection(provider: ConfigProviderId, options: SaveConnectionOptions = {}): Promise<AvenConfig> {
 		const current = await this.load();
-		const options = typeof input === 'string' ? {apiKey: input} : input;
 		const apiKeys = options.apiKey === undefined ? current.apiKeys : {...current.apiKeys, [provider]: options.apiKey};
+		const baseUrls =
+			options.baseUrl === undefined ? current.baseUrls : {...current.baseUrls, [provider]: options.baseUrl};
 		const models =
 			options.models === undefined ? current.models : {...current.models, [provider]: [...new Set(options.models)]};
 		const selectedModels =
 			options.selectedModel === undefined
 				? current.selectedModels
 				: {...current.selectedModels, [provider]: options.selectedModel};
-		const next: AvenConfig = {version: 1, activeProvider: provider, apiKeys, models, selectedModels};
+		const next: AvenConfig = {version: 1, activeProvider: provider, apiKeys, baseUrls, models, selectedModels};
 		await this.write(next);
 		return next;
 	}
@@ -154,7 +147,7 @@ export class ConfigStore {
 		const normalized = model.trim();
 		const current = await this.load();
 		if (!current.models[provider]?.includes(normalized)) {
-			throw new Error(`Model ${normalized} is not cached for ${providers[provider].label}`);
+			throw new Error(`Model ${normalized} is not cached for ${providerCatalog[provider].label}`);
 		}
 		const next: AvenConfig = {
 			...current,

@@ -7,7 +7,7 @@ Aven AI keeps the entire coding workflow in your terminal: chat with an AI model
 ## Highlights
 
 - Full-screen, responsive terminal interface with Markdown and fenced code-block rendering
-- OpenAI and Anthropic provider support with in-app setup and model selection
+- Twelve model providers with in-app credential setup and model selection
 - Built-in `Read`, `Edit`, and `Write` tools with stale-read protection and inline diffs
 - Real PTY command execution for agent tools and direct shell commands
 - Project-scoped sessions and local conversation memory backed by SQLite
@@ -27,9 +27,9 @@ pnpm install
 pnpm dev
 ```
 
-Once Aven AI opens, run `/setup` to choose a provider and add an API key. The key is verified before it is saved.
+Once Aven AI opens, run `/setup` to choose a provider and add its credentials. Aven AI supports OpenAI, OpenRouter, DeepSeek, Fireworks AI, GitHub Models, Hugging Face, Devscale AI, Databricks, Anthropic, OpenCode Go, Xiaomi MiMo, and MiniMax.
 
-If `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is already set in your environment, run `/connect` instead and select the configured provider.
+Credentials are read exclusively from `config.toml`; provider environment variables are not used. Dynamic provider keys are verified through model discovery before they are saved. Xiaomi MiMo and MiniMax use curated model lists, so their keys are verified by the provider on the first request. Databricks setup asks for the workspace URL before the API token.
 
 ## Local installation
 
@@ -62,7 +62,7 @@ Slash commands open searchable overlays or perform session actions:
 
 | Command        | Description                            |
 | -------------- | -------------------------------------- |
-| `/setup`       | Add or replace a provider API key      |
+| `/setup`       | Add or replace provider credentials    |
 | `/connect`     | Connect a configured provider          |
 | `/model`       | View or change the active model        |
 | `/new`         | Start a new project session            |
@@ -107,13 +107,13 @@ Local data lives under `${XDG_CONFIG_HOME:-~/.config}/aven-ai`:
 | `memory.sqlite`   | Agent conversation memory                    |
 | `sessions.sqlite` | Project and session metadata                 |
 
-Configuration files are written with owner-only permissions. Existing `config.json` files are migrated automatically. Aven AI does not create session metadata inside your project.
+Configuration files are written with owner-only permissions. Existing `config.json` files are migrated automatically. Provider credentials must be added through `/setup`; environment variables are intentionally ignored. Aven AI does not create session metadata inside your project.
 
 ## Tools and permissions
 
 The agent can read and modify UTF-8 and UTF-16LE text files. A file must be read before it can be edited or overwritten, and Aven AI rejects the mutation if the file changed after that read. Successful changes appear as a before-and-after diff in the transcript.
 
-Command execution is intentionally powerful: `exec_command` tool calls and direct `!` commands run with the same permissions as the Aven AI process. They are not sandboxed. Commands do not receive interactive input, time out after 120 seconds, and return up to 64 KiB of output.
+Command execution is intentionally powerful: `ExecCommand` tool calls and direct `!` commands run with the same permissions as the Aven AI process. They are not sandboxed. Commands do not receive interactive input, time out after 120 seconds, and return up to 64 KiB of output.
 
 ## Architecture
 

@@ -78,11 +78,10 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 					: message.status === 'waitingPermission'
 						? 'permission'
 						: 'tool';
-		const statusMark =
-			message.status === 'success' ? '⎿' : message.status === 'running' ? '✻' : message.status === 'queued' ? '◌' : '⎿';
+		const statusPrefix = message.status === 'running' ? '✻ ' : message.status === 'queued' ? '◌ ' : '';
 		const lines = wrapSegments(
 			[
-				{text: `${statusMark} ${message.name}`, tone: statusTone, bold: true, selectable: false},
+				{text: `${statusPrefix}${message.name}`, tone: statusTone, bold: true, selectable: false},
 				{text: `(${message.summary})`, tone: 'muted'},
 			],
 			contentWidth,

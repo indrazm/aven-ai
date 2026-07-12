@@ -36,6 +36,12 @@ export const Overlay = ({route, query, items, selectedIndex}: Props) => {
 					<Text inverse> </Text>
 				</Text>
 			) : null}
+			{route === 'setupBaseUrl' ? (
+				<Text color={theme.text}>
+					Workspace URL {query}
+					<Text inverse> </Text>
+				</Text>
+			) : null}
 			{route === 'history' ||
 			route === 'sessions' ||
 			route === 'search' ||
@@ -46,7 +52,7 @@ export const Overlay = ({route, query, items, selectedIndex}: Props) => {
 					<Text inverse> </Text>
 				</Text>
 			) : null}
-			{items.length === 0 && route !== 'setupKey' ? (
+			{items.length === 0 && route !== 'setupKey' && route !== 'setupBaseUrl' ? (
 				<Text color={theme.muted}> No matches</Text>
 			) : (
 				visibleItems.map((item, offset) => {

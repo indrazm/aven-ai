@@ -6,4 +6,4 @@ export {
 	providerIds,
 	type ProviderDescriptor,
 	type ProviderId,
-} from '../../libs/provider-definitions/index.js';
+} from './provider-definitions.js';

@@ -23,7 +23,7 @@ export const safeJson = (value: unknown): string => {
 
 export const summaryFromArguments = (name: string, value: unknown): string => {
 	if (typeof value === 'object' && value !== null) {
-		if (name === 'exec_command' && 'command' in value && typeof value.command === 'string') return value.command;
+		if (name === 'ExecCommand' && 'command' in value && typeof value.command === 'string') return value.command;
 		if ('file_path' in value && typeof value.file_path === 'string') return value.file_path;
 	}
 	return safeJson(value);
@@ -62,7 +62,7 @@ export const parseFileResult = (value: string): FileToolResult | undefined => {
 export const toolMessageFromResult = (id: string, result: ExecCommandResult): ToolMessage => ({
 	id,
 	kind: 'tool',
-	name: 'exec_command',
+	name: 'ExecCommand',
 	status:
 		result.timedOut || result.exitCode !== 0 || (result.signal !== null && result.signal !== 0) ? 'error' : 'success',
 	summary: result.command,

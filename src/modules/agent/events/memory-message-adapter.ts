@@ -34,7 +34,7 @@ export const messagesFromMemory = (messages: Message[]): UiMessage[] => {
 			for (const [partIndex, part] of message.content.entries()) {
 				const text = part.content.flatMap((item) => (item.type === 'text' ? [item.text] : [])).join('\n');
 				const call = calls.get(part.id) ?? (part.callId ? calls.get(part.callId) : undefined);
-				const name = part.toolName ?? call?.name ?? 'exec_command';
+				const name = part.toolName ?? call?.name ?? 'ExecCommand';
 				output.push(
 					toolMessageFromSerializedResult(
 						`history-tool-${messageIndex}-${partIndex}`,

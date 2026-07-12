@@ -3,7 +3,7 @@ import {realpathSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import type {UiMessage} from '../conversation/index.js';
 import type {ProjectSessionSummary} from '../sessions/index.js';
-import type {ProviderId} from '../providers/index.js';
+import type {ProviderCredentials, ProviderId} from '../providers/index.js';
 import type {RuntimeEvent} from './types.js';
 import type {SubmitRequest} from './types.js';
 import type {
@@ -118,9 +118,9 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 		return this.#providers.connect(provider);
 	}
 
-	setup(provider: ProviderId, apiKey: string): Promise<ConnectionState> {
+	setup(provider: ProviderId, credentials: ProviderCredentials): Promise<ConnectionState> {
 		this.#assertAvailable();
-		return this.#providers.setup(provider, apiKey);
+		return this.#providers.setup(provider, credentials);
 	}
 
 	selectModel(model: string): Promise<ConnectionState> {

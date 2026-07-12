@@ -2,7 +2,12 @@ import type {CompletionModel} from '@anvia/core';
 import {providerCatalog as providers, providerIds, type ProviderId} from '../catalog.js';
 import type {ConnectionState, ModelStatus, ProviderStatus} from '../types.js';
 import {ConfigStore} from '../../../libs/config/index.js';
-import {defaultProviderFactory, type ProviderFactory} from '../../../libs/provider-clients/index.js';
+import {
+	defaultProviderFactory,
+	type ProviderCredentials,
+	type ProviderFactory,
+} from '../../../libs/provider-clients/index.js';
+import {normalizeProviderBaseUrl} from '../../../libs/provider-definitions/index.js';
 import {safeErrorMessage} from '../../../utils/safe-error.js';
 
 const disconnected = (): ConnectionState => ({status: 'disconnected'});
@@ -11,7 +16,7 @@ export class MissingProviderKeyError extends Error {
 	readonly provider: ProviderId;
 
 	constructor(provider: ProviderId) {
-		super(`No API key configured for ${providers[provider].label}. Run /setup.`);
+		super(`No credentials configured for ${providers[provider].label}. Run /setup.`);
 		this.name = 'MissingProviderKeyError';
 		this.provider = provider;
 	}
@@ -39,22 +44,20 @@ export class ProviderConnectionManager {
 
 	async providerStatuses(): Promise<ProviderStatus[]> {
 		const config = await this.#config.load();
-		return Promise.all(
-			providerIds.map(async (id) => ({
-				id,
-				label: providers[id].label,
-				model: config.selectedModels[id] ?? providers[id].model,
-				configured: await this.#config.hasKey(id),
-				active: this.#connection.status === 'connected' && this.#connection.provider === id,
-			})),
-		);
+		return providerIds.map((id) => ({
+			id,
+			label: providers[id].label,
+			...(config.selectedModels[id] ? {model: config.selectedModels[id]} : {}),
+			configured: Boolean(config.apiKeys[id] && (!providers[id].baseUrl?.required || config.baseUrls[id])),
+			active: this.#connection.status === 'connected' && this.#connection.provider === id,
+		}));
 	}
 
 	async modelStatuses(): Promise<ModelStatus[]> {
 		const provider = this.#connection.provider;
 		if (!provider) return [];
 		const config = await this.#config.load();
-		const selected = config.selectedModels[provider] ?? providers[provider].model;
+		const selected = config.selectedModels[provider];
 		return (config.models[provider] ?? []).map((id) => ({id, active: id === selected}));
 	}
 
@@ -68,22 +71,29 @@ export class ProviderConnectionManager {
 				status: 'error',
 				provider: config.activeProvider,
 				providerLabel: providers[config.activeProvider].label,
-				model: providers[config.activeProvider].model,
+				...(config.selectedModels[config.activeProvider] ? {model: config.selectedModels[config.activeProvider]} : {}),
 				error: safeErrorMessage(error),
 			});
 		}
 	}
 
 	async connect(provider: ProviderId): Promise<ConnectionState> {
-		const key = await this.#config.resolvedKey(provider);
-		if (!key) throw new MissingProviderKeyError(provider);
-		return this.#activate(provider, key);
+		const credentials = await this.#config.resolvedCredentials(provider);
+		if (!credentials) throw new MissingProviderKeyError(provider);
+		return this.#activate(provider, credentials);
 	}
 
-	async setup(provider: ProviderId, apiKey: string): Promise<ConnectionState> {
-		const normalized = apiKey.trim();
-		if (!normalized) throw new Error('API key must not be empty');
-		if (/\s/u.test(normalized)) throw new Error('API key must not contain whitespace');
+	async setup(provider: ProviderId, credentials: ProviderCredentials): Promise<ConnectionState> {
+		const apiKey = credentials.apiKey.trim();
+		if (!apiKey) throw new Error('API key must not be empty');
+		if (/\s/u.test(apiKey)) throw new Error('API key must not contain whitespace');
+		const descriptor = providers[provider];
+		let baseUrl: string | undefined;
+		if (descriptor.baseUrl?.required) {
+			if (!credentials.baseUrl) throw new Error(`${descriptor.baseUrl.label} is required.`);
+			baseUrl = normalizeProviderBaseUrl(provider, credentials.baseUrl);
+		}
+		const normalized = {apiKey, ...(baseUrl ? {baseUrl} : {})};
 		return this.#activate(provider, normalized, normalized);
 	}
 
@@ -97,24 +107,29 @@ export class ProviderConnectionManager {
 		return this.#setConnection({...this.#connection, model});
 	}
 
-	async #activate(provider: ProviderId, key: string, apiKey?: string): Promise<ConnectionState> {
+	async #activate(
+		provider: ProviderId,
+		credentials: ProviderCredentials,
+		persistedCredentials?: ProviderCredentials,
+	): Promise<ConnectionState> {
 		const existing = await this.#config.load();
-		const preferredModel = existing.selectedModels[provider] ?? providers[provider].model;
+		const preferredModel = existing.selectedModels[provider];
 		this.#setConnection({
 			status: 'connecting',
 			provider,
 			providerLabel: providers[provider].label,
-			model: preferredModel,
+			...(preferredModel ? {model: preferredModel} : {}),
 		});
 		try {
-			const connection = this.#providerFactory(provider, key);
+			const connection = this.#providerFactory(provider, credentials);
 			const listing = await connection.listModels();
-			const modelIds = [...new Set(listing.data.map((model) => model.id).filter(Boolean))].sort();
-			const selectedModel =
-				modelIds.length === 0 || modelIds.includes(preferredModel) ? preferredModel : providers[provider].model;
-			const cachedModels = modelIds.includes(selectedModel) ? modelIds : [selectedModel, ...modelIds];
+			const modelIds = [...new Set(listing.data.map((model) => model.id.trim()).filter(Boolean))];
+			if (modelIds.length === 0) throw new Error(`${providers[provider].label} returned no supported models.`);
+			const selectedModel = preferredModel && modelIds.includes(preferredModel) ? preferredModel : modelIds[0]!;
+			const cachedModels = [...modelIds].sort((left, right) => left.localeCompare(right));
 			await this.#config.saveConnection(provider, {
-				...(apiKey ? {apiKey} : {}),
+				...(persistedCredentials?.apiKey ? {apiKey: persistedCredentials.apiKey} : {}),
+				...(persistedCredentials?.baseUrl ? {baseUrl: persistedCredentials.baseUrl} : {}),
 				models: cachedModels,
 				selectedModel,
 			});
@@ -133,7 +148,7 @@ export class ProviderConnectionManager {
 				status: 'error',
 				provider,
 				providerLabel: providers[provider].label,
-				model: preferredModel,
+				...(preferredModel ? {model: preferredModel} : {}),
 				error: safeErrorMessage(error),
 			});
 			throw error;

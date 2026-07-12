@@ -24,7 +24,7 @@ export class DirectCommandExecutor {
 			message: {
 				id: messageId,
 				kind: 'tool',
-				name: 'exec_command',
+				name: 'ExecCommand',
 				status: 'running',
 				summary: request.content,
 				group: 'bash',
@@ -40,8 +40,8 @@ export class DirectCommandExecutor {
 				turn: 1,
 				messages: [
 					Message.user(request.content, {metadata: {avenMode: 'bash'}}),
-					Message.assistant([AssistantContent.toolCall(toolCallId, 'exec_command', {command: request.content})]),
-					Message.toolResult(toolCallId, result, {toolName: 'exec_command'}),
+					Message.assistant([AssistantContent.toolCall(toolCallId, 'ExecCommand', {command: request.content})]),
+					Message.toolResult(toolCallId, result, {toolName: 'ExecCommand'}),
 				],
 			});
 		} catch {

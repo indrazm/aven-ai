@@ -31,7 +31,7 @@ const runtimeFixture = async (factory: ProviderFactory, ptyRunner?: PtyRunner) =
 	const directory = await mkdtemp(join(tmpdir(), 'aven-runtime-'));
 	directories.push(directory);
 	return new AnviaAgentRuntime({
-		configStore: new ConfigStore(join(directory, 'config.toml'), {}),
+		configStore: new ConfigStore(join(directory, 'config.toml')),
 		memoryPath: join(directory, 'memory.sqlite'),
 		projectRoot: directory,
 		sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
@@ -48,7 +48,7 @@ describe('AnviaAgentRuntime configuration', () => {
 	it('verifies before persisting and connecting a provider', async () => {
 		const listModels = vi.fn(async () => ({data: [{id: 'gpt-5'}, {id: 'gpt-5-mini'}]}));
 		const runtime = await runtimeFixture(() => ({model: () => model, listModels}));
-		const connected = await runtime.setup('openai', 'test-key');
+		const connected = await runtime.setup('openai', {apiKey: 'test-key'});
 
 		expect(listModels).toHaveBeenCalledOnce();
 		expect(connected).toMatchObject({status: 'connected', provider: 'openai', model: 'gpt-5'});
@@ -72,7 +72,7 @@ describe('AnviaAgentRuntime configuration', () => {
 			},
 		}));
 
-		await expect(runtime.setup('anthropic', 'bad-key')).rejects.toThrow('invalid key');
+		await expect(runtime.setup('anthropic', {apiKey: 'bad-key'})).rejects.toThrow('invalid key');
 		expect(await runtime.providerStatuses()).toContainEqual(
 			expect.objectContaining({id: 'anthropic', configured: false, active: false}),
 		);
@@ -91,7 +91,7 @@ describe('AnviaAgentRuntime configuration', () => {
 			messages: [Message.user('Legacy prompt')],
 		});
 		const runtime = new AnviaAgentRuntime({
-			configStore: new ConfigStore(join(directory, 'config.toml'), {}),
+			configStore: new ConfigStore(join(directory, 'config.toml')),
 			memoryPath,
 			projectRoot: directory,
 			sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
@@ -136,7 +136,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		expect(await runtime.loadHistory()).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({kind: 'user', variant: 'bash', content: 'pwd'}),
-				expect.objectContaining({kind: 'tool', name: 'exec_command', status: 'success'}),
+				expect.objectContaining({kind: 'tool', name: 'ExecCommand', status: 'success'}),
 			]),
 		);
 		expect(runtime.getActiveSession()).toMatchObject({
@@ -194,7 +194,7 @@ describe('AnviaAgentRuntime configuration', () => {
 						response: {
 							choice: [
 								AssistantContent.text('Checking the workspace.'),
-								AssistantContent.toolCall('call-1', 'exec_command', {command: 'pwd'}),
+								AssistantContent.toolCall('call-1', 'ExecCommand', {command: 'pwd'}),
 							],
 							usage: Usage.empty(),
 						},
@@ -222,7 +222,7 @@ describe('AnviaAgentRuntime configuration', () => {
 			() => ({model: () => streamingModel, listModels: async () => ({data: [{id: 'gpt-5'}]})}),
 			ptyRunner,
 		);
-		await runtime.setup('openai', 'test-key');
+		await runtime.setup('openai', {apiKey: 'test-key'});
 		const events = [];
 		for await (const event of runtime.run(
 			{id: 'prompt', content: 'Inspect the workspace', mode: 'prompt'},
@@ -233,7 +233,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: 'message.appended',
-				message: expect.objectContaining({name: 'exec_command', status: 'running'}),
+				message: expect.objectContaining({name: 'ExecCommand', status: 'running'}),
 			}),
 		);
 		expect(events).toContainEqual(
@@ -319,7 +319,7 @@ describe('AnviaAgentRuntime configuration', () => {
 			model: () => streamingModel,
 			listModels: async () => ({data: [{id: 'gpt-5'}]}),
 		}));
-		await runtime.setup('openai', 'test-key');
+		await runtime.setup('openai', {apiKey: 'test-key'});
 		const events = [];
 		for await (const event of runtime.run(
 			{id: 'file-prompt', content: 'Update the file', mode: 'prompt'},
@@ -386,7 +386,7 @@ describe('AnviaAgentRuntime configuration', () => {
 			model: () => streamingModel,
 			listModels: async () => ({data: [{id: 'gpt-5'}]}),
 		}));
-		await runtime.setup('openai', 'test-key');
+		await runtime.setup('openai', {apiKey: 'test-key'});
 		for await (const _event of runtime.run(
 			{id: 'read-session', content: 'Read it', mode: 'prompt'},
 			new AbortController().signal,

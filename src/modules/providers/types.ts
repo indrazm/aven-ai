@@ -11,7 +11,7 @@ export type ConnectionState = {
 export type ProviderStatus = {
 	id: ProviderId;
 	label: string;
-	model: string;
+	model?: string;
 	configured: boolean;
 	active: boolean;
 };
