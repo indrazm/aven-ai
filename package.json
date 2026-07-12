@@ -32,7 +32,7 @@
 		"@anvia/anthropic": "^0.3.14",
 		"@anvia/core": "^0.13.0",
 		"@anvia/memory-sqlite": "^0.2.2",
-		"@anvia/openai": "^0.3.16",
+		"@anvia/openai": "^0.3.17",
 		"@inkjs/ui": "^2.0.0",
 		"diff": "^9.0.0",
 		"fuse.js": "^7.4.2",

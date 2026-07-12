@@ -1,6 +1,7 @@
 import {render} from 'ink-testing-library';
 import {describe, expect, it} from 'vitest';
 import {App} from '../../src/modules/app/index.js';
+import {providerIds} from '../../src/modules/providers/index.js';
 import {SetupRuntime} from '../support/runtime-fakes.js';
 
 describe('App provider flows', () => {
@@ -44,7 +45,7 @@ describe('App provider flows', () => {
 		await tick();
 		stdin.write('\r');
 		await tick();
-		for (let index = 0; index < 7; index += 1) {
+		for (let index = 0; index < providerIds.indexOf('databricks'); index += 1) {
 			stdin.write('\u001B[B');
 			await tick();
 		}

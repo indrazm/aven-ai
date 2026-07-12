@@ -7,7 +7,7 @@ Aven AI keeps the entire coding workflow in your terminal: chat with an AI model
 ## Highlights
 
 - Full-screen, responsive terminal interface with Markdown and fenced code-block rendering
-- Twelve model providers with in-app credential setup and model selection
+- Thirteen model providers with in-app credential setup and model selection
 - Built-in `Read`, `Edit`, and `Write` tools with stale-read protection and inline diffs
 - Real PTY command execution for agent tools and direct shell commands
 - Project-scoped sessions and local conversation memory backed by SQLite
@@ -27,7 +27,7 @@ pnpm install
 pnpm dev
 ```
 
-Once Aven AI opens, run `/setup` to choose a provider and add its credentials. Aven AI supports OpenAI, OpenRouter, DeepSeek, Fireworks AI, GitHub Models, Hugging Face, Devscale AI, Databricks, Anthropic, OpenCode Go, Xiaomi MiMo, and MiniMax.
+Once Aven AI opens, run `/setup` to choose a provider and add its credentials. Aven AI supports OpenAI, OpenRouter, DeepSeek, Fireworks AI, GitHub Models, Hugging Face, Devscale AI, Sumopod, Databricks, Anthropic, OpenCode Go, Xiaomi MiMo, and MiniMax.
 
 Credentials are read exclusively from `config.toml`; provider environment variables are not used. Dynamic provider keys are verified through model discovery before they are saved. Xiaomi MiMo and MiniMax use curated model lists, so their keys are verified by the provider on the first request. Databricks setup asks for the workspace URL before the API token.
 

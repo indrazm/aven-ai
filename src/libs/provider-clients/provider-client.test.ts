@@ -17,6 +17,7 @@ describe('provider clients', () => {
 		expect(providerBaseUrls['github-models']).toBe('https://models.github.ai/inference');
 		expect(providerBaseUrls.huggingface).toBe('https://router.huggingface.co/v1');
 		expect(providerBaseUrls.minimax).toBe('https://api.minimax.io/anthropic');
+		expect(providerBaseUrls.sumopod).toBe('https://ai.sumopod.com');
 	});
 
 	it('returns curated Xiaomi MiMo and MiniMax models without a network request', async () => {

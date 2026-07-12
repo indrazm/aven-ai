@@ -7,3 +7,5 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
   node-pty: true
+minimumReleaseAgeExclude:
+  - '@anvia/openai@0.3.17'

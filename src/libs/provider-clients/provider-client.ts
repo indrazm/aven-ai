@@ -30,6 +30,7 @@ export const providerBaseUrls = {
 	'opencode-go-anthropic': 'https://opencode.ai/zen/go',
 	'opencode-go-openai': 'https://opencode.ai/zen/go/v1',
 	openrouter: 'https://openrouter.ai/api/v1',
+	sumopod: 'https://ai.sumopod.com',
 	'xiaomi-mimo': 'https://token-plan-sgp.xiaomimimo.com/v1',
 } as const;
 

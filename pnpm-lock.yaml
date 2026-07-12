@@ -18,8 +18,8 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2(@anvia/core@0.13.0)
       '@anvia/openai':
-        specifier: ^0.3.16
-        version: 0.3.16(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)
+        specifier: ^0.3.17
+        version: 0.3.17(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)
       '@inkjs/ui':
         specifier: ^2.0.0
         version: 2.0.0(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))
@@ -128,8 +128,8 @@ packages:
     peerDependencies:
       '@anvia/core': '>=0.13.0 <1.0.0'
 
-  '@anvia/openai@0.3.16':
-    resolution: {integrity: sha512-CnOdoJcCj1Vw2cGyrRvz8Ll+sJKRDfuw4Dw1TR8flBmVLPsqNTn41EAB0WnAoo8HEEn9KuJpYfDvnIR57u+Ftw==}
+  '@anvia/openai@0.3.17':
+    resolution: {integrity: sha512-LHDRJGV8zNjvwLnzgrAsFsKj1RR6bRPfoP+D6e21zzsXfepzrkurTsKXK0nFEEqSr5YzwZ/OrC9D4V7sMueP6g==}
     peerDependencies:
       '@anvia/core': '>=0.7.1 <1.0.0'
 
@@ -2234,7 +2234,7 @@ snapshots:
     dependencies:
       '@anvia/core': 0.13.0
 
-  '@anvia/openai@0.3.16(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)':
+  '@anvia/openai@0.3.17(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)':
     dependencies:
       '@anvia/core': 0.13.0
       openai: 6.46.0(ws@8.21.0)(zod@4.4.3)

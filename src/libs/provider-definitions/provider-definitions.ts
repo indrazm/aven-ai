@@ -6,6 +6,7 @@ export const providerIds = [
 	'github-models',
 	'huggingface',
 	'devscale-ai',
+	'sumopod',
 	'databricks',
 	'anthropic',
 	'opencode-go',
@@ -33,6 +34,7 @@ export const providerCatalog: Record<ProviderId, ProviderDescriptor> = {
 	'github-models': {id: 'github-models', label: 'GitHub Models'},
 	huggingface: {id: 'huggingface', label: 'Hugging Face'},
 	'devscale-ai': {id: 'devscale-ai', label: 'Devscale AI'},
+	sumopod: {id: 'sumopod', label: 'Sumopod'},
 	databricks: {
 		id: 'databricks',
 		label: 'Databricks',

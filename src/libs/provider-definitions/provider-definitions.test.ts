@@ -11,6 +11,7 @@ describe('provider definitions', () => {
 			'github-models',
 			'huggingface',
 			'devscale-ai',
+			'sumopod',
 			'databricks',
 			'anthropic',
 			'opencode-go',
