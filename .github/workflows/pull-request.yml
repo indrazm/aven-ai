@@ -1,0 +1,45 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: PR checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run quality gate
+        run: pnpm check
+
+      - name: Check changeset
+        shell: bash
+        run: |
+          head_branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          if [[ "$head_branch" == changeset-release/* ]]; then
+            echo "Skipping changeset requirement for the automated release PR."
+          else
+            pnpm changeset:status --since=origin/main
+          fi

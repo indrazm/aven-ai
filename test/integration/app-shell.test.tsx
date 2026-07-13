@@ -153,9 +153,7 @@ describe('App shell and composer', () => {
 		stdin.write('stream');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		stdin.write('\r');
-		await new Promise((resolve) => setTimeout(resolve, 80));
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(lastFrame()).toContain('streamed line 35');
+		await vi.waitFor(() => expect(lastFrame()).toContain('streamed line 35'));
 
 		stdin.write('\u001B[5~');
 		await new Promise((resolve) => setTimeout(resolve, 0));
