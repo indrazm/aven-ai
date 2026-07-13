@@ -33,11 +33,18 @@ Credentials are read exclusively from `config.toml`; provider environment variab
 
 ## Local installation
 
-Build the CLI and add an `aven-ai` symlink to `~/.local/bin`:
+Install the published CLI globally:
+
+```sh
+npm install --global aven-ai
+aven
+```
+
+To install from a source checkout instead, build the CLI and add an `aven` symlink to `~/.local/bin`:
 
 ```sh
 pnpm install:local
-aven-ai
+aven
 ```
 
 Set `AVEN_BIN_DIR` to install the symlink elsewhere. Reinstalling refreshes stale build links from the same checkout, but the installer will not overwrite regular files or symlinks owned by another project.

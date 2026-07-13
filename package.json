@@ -1,11 +1,17 @@
 {
 	"name": "aven-ai",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"description": "A full-screen, multi-provider Anvia coding agent terminal with PTY tools.",
 	"type": "module",
-	"private": true,
+	"files": [
+		"dist"
+	],
 	"bin": {
-		"aven-ai": "dist/index.js"
+		"aven": "dist/index.js"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
 	},
 	"engines": {
 		"node": ">=22"
@@ -19,6 +25,7 @@
 		"install:local": "pnpm build && node scripts/install-local.mjs",
 		"uninstall:local": "node scripts/install-local.mjs --uninstall",
 		"prepare": "node scripts/install-git-hooks.mjs",
+		"prepack": "pnpm build",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"typecheck": "tsc --noEmit",

@@ -103,7 +103,7 @@ if (!uninstalling) {
 		.map((entry) => resolve(entry));
 	if (!pathEntries.includes(binDirectory)) {
 		console.warn(
-			`${binDirectory} is not currently on PATH. Add it before running ${basename(binEntries[0]?.[0] ?? 'aven-ai')}.`,
+			`${binDirectory} is not currently on PATH. Add it before running ${basename(binEntries[0]?.[0] ?? 'aven')}.`,
 		);
 	}
 }
