@@ -1,171 +1,96 @@
 # Aven AI
 
-A terminal-native coding agent built with TypeScript, React, Ink, and [Anvia](https://anvia.dev).
+A terminal-native AI coding agent built with TypeScript, React, Ink, and [Anvia](https://anvia.dev).
 
-Aven AI keeps the entire coding workflow in your terminal: chat with an AI model, inspect streamed tool calls, edit files, run commands, search conversation history, and resume project-specific sessions without leaving the keyboard.
+Aven lets you chat with AI models, inspect tool calls, edit files, run commands, and resume project sessions without leaving the terminal.
 
-## Highlights
+## Install
 
-- Full-screen, responsive terminal interface with Markdown and fenced code-block rendering
-- Thirteen model providers with in-app credential setup and model selection
-- Built-in `Read`, `Edit`, and `Write` tools with stale-read protection and inline diffs
-- Real PTY command execution for agent tools and direct shell commands
-- Project-scoped sessions and local conversation memory backed by SQLite
-- Searchable prompts, transcripts, commands, sessions, and model lists
-- Mouse scrolling and text selection with OSC 52 clipboard support
-
-## Requirements
-
-- Node.js 22 or newer
-- pnpm 11 or newer
-- An interactive terminal with ANSI and Unicode support
-
-## Quick start
-
-```sh
-pnpm install
-pnpm dev
-```
-
-Once Aven AI opens, run `/setup` to choose a provider and add its credentials. Aven AI supports OpenAI, OpenRouter, DeepSeek, Fireworks AI, GitHub Models, Hugging Face, Devscale AI, Sumopod, Databricks, Anthropic, OpenCode Go, Xiaomi MiMo, and MiniMax.
-
-Credentials are read exclusively from `config.toml`; provider environment variables are not used. Dynamic provider keys are verified through model discovery before they are saved. Xiaomi MiMo and MiniMax use curated model lists, so their keys are verified by the provider on the first request. Databricks setup asks for the workspace URL before the API token.
-
-## Local installation
-
-Install the published CLI globally:
+Requires Node.js 22 or newer.
 
 ```sh
 npm install --global aven-ai
 aven
 ```
 
-To install from a source checkout instead, build the CLI and add an `aven` symlink to `~/.local/bin`:
+On first launch, run `/setup` to choose a provider and add its API key.
 
-```sh
-pnpm install:local
-aven
-```
+## Features
 
-Set `AVEN_BIN_DIR` to install the symlink elsewhere. Reinstalling refreshes stale build links from the same checkout, but the installer will not overwrite regular files or symlinks owned by another project.
+- Full-screen terminal interface with Markdown rendering
+- File reading, editing, and writing with inline diffs
+- PTY-backed shell command execution
+- Project-scoped sessions and searchable history
+- Mouse scrolling, text selection, and clipboard support
+- Multiple model providers, including OpenAI, Anthropic, OpenRouter, DeepSeek, GitHub Models, and more
 
-To remove the local symlink:
+## Usage
 
-```sh
-pnpm uninstall:local
-```
-
-## Using Aven AI
-
-Type a prompt and press `Enter` to start a turn. Responses and tool activity stream into the transcript as they happen.
-
-Prefix an input with `!` to run it directly in the project shell:
+Type a prompt and press `Enter`. Prefix a command with `!` to run it directly in the project shell:
 
 ```text
 !git status
 ```
 
-Slash commands open searchable overlays or perform session actions:
+Common slash commands:
 
-| Command        | Description                            |
-| -------------- | -------------------------------------- |
-| `/setup`       | Add or replace provider credentials    |
-| `/connect`     | Connect a configured provider          |
-| `/model`       | View or change the active model        |
-| `/new`         | Start a new project session            |
-| `/resume`      | Search and resume project sessions     |
-| `/resume-last` | Resume the most recent project session |
-| `/history`     | Search local prompt history            |
-| `/search`      | Search the visible transcript          |
-| `/commands`    | Browse available commands              |
-| `/help`        | Show keyboard and interaction help     |
-| `/theme`       | Preview the current terminal theme     |
+| Command        | Action                               |
+| -------------- | ------------------------------------ |
+| `/setup`       | Configure provider credentials       |
+| `/connect`     | Connect to a configured provider     |
+| `/model`       | Change the active model              |
+| `/new`         | Start a new session                  |
+| `/resume`      | Find and resume a previous session   |
+| `/resume-last` | Resume the most recent session       |
+| `/history`     | Search prompt history                |
+| `/commands`    | Browse all available commands        |
+| `/help`        | Show controls and keyboard shortcuts |
 
-### Keyboard and mouse controls
+Useful controls:
 
-| Input                       | Action                                                   |
-| --------------------------- | -------------------------------------------------------- |
-| `Enter`                     | Submit a prompt                                          |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline                                         |
-| `\` then `Enter`            | Insert a newline in terminals without modifier support   |
-| `Ctrl+O`                    | Toggle transcript navigation and tool output             |
-| `Page Up` / `Page Down`     | Scroll the transcript                                    |
-| `Ctrl+Home` / `Ctrl+End`    | Jump to the start or end                                 |
-| `↑` / `↓` or `j` / `k`      | Scroll one line while transcript navigation is active    |
-| `g` / `G` or `Home` / `End` | Jump to either end while transcript navigation is active |
-| `Ctrl+R`                    | Open prompt history                                      |
-| Mouse wheel                 | Scroll the transcript                                    |
-| Mouse drag                  | Select transcript text                                   |
-| Double-click / triple-click | Select a word or line                                    |
-| `Ctrl+Shift+C`              | Copy selected text through OSC 52                        |
-| `Esc`                       | Close or cancel the current UI context                   |
-| `Ctrl+C`                    | Interrupt active work; press twice while idle to exit    |
-| `Ctrl+D`                    | Delete forward; press twice on empty input to exit       |
+| Input                       | Action                       |
+| --------------------------- | ---------------------------- |
+| `Enter`                     | Submit a prompt              |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline             |
+| `Ctrl+O`                    | Toggle transcript navigation |
+| `Page Up` / `Page Down`     | Scroll the transcript        |
+| `Ctrl+R`                    | Open prompt history          |
+| `Esc`                       | Close or cancel              |
+| `Ctrl+C`                    | Interrupt active work        |
 
-Typing `?` or `!` into an empty composer opens help or direct command mode. Session changes are disabled while a turn is active or prompts are queued.
+## Local data
 
-## Sessions and local data
-
-Sessions are scoped to the directory where Aven AI starts. Each launch begins a fresh session; use `/resume-last` or `/resume` to continue earlier work for the same project.
-
-Local data lives under `${XDG_CONFIG_HOME:-~/.config}/aven-ai`:
-
-| File              | Contents                                     |
-| ----------------- | -------------------------------------------- |
-| `config.toml`     | Provider settings, model cache, and API keys |
-| `memory.sqlite`   | Agent conversation memory                    |
-| `sessions.sqlite` | Project and session metadata                 |
-
-Configuration files are written with owner-only permissions. Existing `config.json` files are migrated automatically. Provider credentials must be added through `/setup`; environment variables are intentionally ignored. Aven AI does not create session metadata inside your project.
-
-## Tools and permissions
-
-The agent can read and modify UTF-8 and UTF-16LE text files. A file must be read before it can be edited or overwritten, and Aven AI rejects the mutation if the file changed after that read. Successful changes appear as a before-and-after diff in the transcript.
-
-Command execution is intentionally powerful: `ExecCommand` tool calls and direct `!` commands run with the same permissions as the Aven AI process. They are not sandboxed. Commands do not receive interactive input, time out after 120 seconds, and return up to 64 KiB of output.
-
-## Architecture
-
-The application is split into focused modules under `src/modules`, with process, persistence, SDK, and terminal adapters under `src/libs`:
+Aven stores configuration and project-scoped session data under:
 
 ```text
-src/
-  index.ts          CLI entrypoint
-  libs/             config, SDK, PTY, storage, and terminal adapters
-  modules/
-    agent/          runtime, prompts, tools, and events
-    app/            application composition and state
-    commands/       slash-command registry
-    composer/       editor and input behavior
-    conversation/   transcript rendering and selection
-    overlays/       searchable overlay models and views
-    providers/      provider connections and model selection
-    sessions/       project-session lifecycle
-  utils/            dependency-free shared helpers
-test/
-  integration/      cross-feature integration tests
-  support/          shared test fakes and helpers
+${XDG_CONFIG_HOME:-~/.config}/aven-ai
 ```
 
-The UI depends on a small `AgentRuntime` contract, which keeps alternate runtimes and deterministic tests isolated from the production Anvia implementation. Cross-module imports go through public `index.ts` files, and architecture tests enforce dependency direction and reject circular source dependencies.
+Provider credentials are stored locally in `config.toml` with owner-only permissions. Add or replace credentials through `/setup`.
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for module responsibilities and boundary rules.
+Commands run with the same permissions as the Aven process and are not sandboxed. Review commands and file changes before accepting them.
 
 ## Development
+
+```sh
+pnpm install
+pnpm dev
+```
 
 Useful commands:
 
 ```sh
-pnpm dev             # Run from source
-pnpm test            # Run the test suite
-pnpm test:watch      # Run tests in watch mode
-pnpm format          # Format the repository
-pnpm typecheck       # Check TypeScript
-pnpm lint            # Run ESLint
-pnpm build           # Build the production CLI
-pnpm check           # Run the complete local quality gate
+pnpm test        # Run tests
+pnpm typecheck   # Check TypeScript
+pnpm lint        # Run ESLint
+pnpm build       # Build the CLI
+pnpm check       # Run the complete quality gate
 ```
 
-`pnpm check` runs formatting checks, type checking, linting, coverage tests, and a production build. The tracked pre-push hook runs the same gate after `pnpm install` configures it.
+Install a development build as the `aven` command:
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) before making structural changes or adding dependencies.
+```sh
+pnpm install:local
+```
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) and [CONTRIBUTING.md](./CONTRIBUTING.md) for project details.
