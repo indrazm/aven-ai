@@ -3,6 +3,10 @@
 	"version": "0.0.1",
 	"description": "A full-screen, multi-provider Anvia coding agent terminal with PTY tools.",
 	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/indrazm/aven-ai.git"
+	},
 	"files": [
 		"dist"
 	],
@@ -24,6 +28,10 @@
 		"start": "node dist/index.js",
 		"install:local": "pnpm build && node scripts/install-local.mjs",
 		"uninstall:local": "node scripts/install-local.mjs --uninstall",
+		"changeset": "changeset",
+		"changeset:status": "changeset status",
+		"version-packages": "changeset version",
+		"release": "changeset publish",
 		"prepare": "node scripts/install-git-hooks.mjs",
 		"prepack": "pnpm build",
 		"format": "prettier --write .",
@@ -57,6 +65,7 @@
 		"@babel/core": "^8.0.1",
 		"@babel/eslint-parser": "^8.0.1",
 		"@babel/preset-typescript": "^8.0.1",
+		"@changesets/cli": "^2.31.0",
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^24.0.0",
 		"@types/react": "^19.2.0",

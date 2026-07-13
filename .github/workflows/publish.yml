@@ -1,0 +1,63 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish aven-ai
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Require main branch
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::npm releases must run from main."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Set up npm trusted publishing
+        run: npm install --global "npm@^11.5.1"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Require merged release PR
+        shell: bash
+        run: |
+          if find .changeset -maxdepth 1 -name '*.md' ! -name README.md | grep -q .; then
+            echo "::error::Pending changesets found. Merge the Changesets release PR first."
+            exit 1
+          fi
+
+      - name: Run quality gate
+        run: pnpm check
+
+      - name: Publish package
+        run: pnpm release
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'

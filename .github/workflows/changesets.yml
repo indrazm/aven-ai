@@ -1,0 +1,52 @@
+name: Changesets
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: changesets-main
+  cancel-in-progress: false
+
+jobs:
+  release-pr:
+    name: Update release PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create or update release PR
+        id: changesets
+        uses: changesets/action@v1.9.0
+        with:
+          version: pnpm version-packages
+          title: 'chore: release aven-ai'
+          commit: 'chore: release aven-ai'
+          commitMode: github-api
+
+      - name: Run checks for release PR
+        if: steps.changesets.outputs.hasChangesets == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pull-request.yml --ref changeset-release/main
