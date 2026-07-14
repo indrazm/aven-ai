@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {commandSuggestionsFor, suggestionWindow} from './suggestions.js';
+import {commandSuggestionsFor, createMentionSearch, suggestionWindow} from './suggestions.js';
 
 describe('command suggestions', () => {
 	it('filters the typed command registry', () => {
@@ -25,5 +25,23 @@ describe('command suggestions', () => {
 	it('shows the first page while the selection is already visible', () => {
 		const suggestions = commandSuggestionsFor('/', true);
 		expect(suggestionWindow(suggestions, 3, 6).map((item) => item.index)).toEqual([0, 1, 2, 3, 4, 5]);
+	});
+});
+
+describe('mention suggestions', () => {
+	it('fuzzy searches full paths and labels files and folders explicitly', () => {
+		const search = createMentionSearch([
+			{path: 'src', kind: 'directory'},
+			{path: 'src/app.ts', kind: 'file'},
+			{path: 'docs/application.md', kind: 'file'},
+		]);
+		expect(search('src/app')[0]).toEqual({
+			kind: 'mention',
+			label: '@src/app.ts',
+			description: 'file',
+			path: 'src/app.ts',
+			pathKind: 'file',
+		});
+		expect(search('').map((item) => item.label)).toEqual(['@src/', '@docs/application.md', '@src/app.ts']);
 	});
 });

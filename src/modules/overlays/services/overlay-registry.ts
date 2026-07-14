@@ -18,6 +18,7 @@ const items: Record<OverlayRoute, readonly OverlayItem[]> = {
 	help: [
 		{label: 'Enter', description: 'submit prompt'},
 		{label: 'Shift/Alt+Enter', description: 'insert newline'},
+		{label: '@', description: 'mention a project file or folder; Tab/Enter inserts'},
 		{label: 'Ctrl+O', description: 'toggle transcript navigation and expand tool output'},
 		{label: 'Ctrl+C', description: 'interrupt; press twice while idle to exit'},
 		{label: 'Ctrl+D', description: 'press twice on empty input to exit'},

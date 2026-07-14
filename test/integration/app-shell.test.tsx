@@ -1,4 +1,7 @@
 import {render} from 'ink-testing-library';
+import {mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {App} from '../../src/modules/app/index.js';
 import type {RuntimeEvent} from '../../src/modules/agent/index.js';
@@ -71,8 +74,25 @@ class PausedStreamingRuntime implements AgentRuntime {
 	dispose(): void {}
 }
 
+class MentionRecordingRuntime implements AgentRuntime {
+	readonly requests: SubmitRequest[] = [];
+
+	async *run(request: SubmitRequest): AsyncIterable<RuntimeEvent> {
+		this.requests.push(request);
+		yield {type: 'turn.started', request};
+		yield {type: 'turn.completed', turnId: request.id};
+	}
+
+	dispose(): void {}
+}
+
+const temporaryDirectories: string[] = [];
+
 describe('App shell and composer', () => {
-	afterEach(() => vi.useRealTimers());
+	afterEach(async () => {
+		vi.useRealTimers();
+		await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, {recursive: true, force: true})));
+	});
 
 	it('renders the full-screen coding agent surface', async () => {
 		const {lastFrame, unmount} = render(<App workingDirectory="/workspace/aven" />);
@@ -209,6 +229,31 @@ describe('App shell and composer', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(lastFrame()).toContain('Connect provider');
 		expect(lastFrame()).not.toContain('❯ /con');
+		unmount();
+	});
+
+	it('inserts an @ path on the first Enter and submits its structured reference on the second', async () => {
+		const root = await mkdtemp(join(tmpdir(), 'aven-app-mentions-'));
+		temporaryDirectories.push(root);
+		await mkdir(join(root, 'src'));
+		await writeFile(join(root, 'src', 'app.ts'), 'export const app = true;\n');
+		const runtime = new MentionRecordingRuntime();
+		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} workingDirectory={root} />);
+
+		stdin.write('Review @src/app');
+		await vi.waitFor(() => expect(lastFrame()).toContain('@src/app.ts'));
+		stdin.write('\r');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(runtime.requests).toHaveLength(0);
+		expect(lastFrame()).toContain('Review @src/app.ts');
+
+		stdin.write('\r');
+		await vi.waitFor(() => expect(runtime.requests).toHaveLength(1));
+		expect(runtime.requests[0]).toMatchObject({
+			content: 'Review @src/app.ts',
+			mode: 'prompt',
+			mentions: [{path: 'src/app.ts', kind: 'file'}],
+		});
 		unmount();
 	});
 

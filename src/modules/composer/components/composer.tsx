@@ -3,7 +3,7 @@ import {Box, Text} from 'ink';
 import type {AgentStatus, InputMode} from '../../agent/index.js';
 import {theme} from '../../../libs/terminal/index.js';
 import {suggestionWindow} from '../services/suggestions.js';
-import type {Suggestion} from '../types.js';
+import type {Suggestion, SuggestionStatus} from '../types.js';
 
 type Props = {
 	value: string;
@@ -13,6 +13,8 @@ type Props = {
 	queuedPrompts: readonly string[];
 	suggestions: readonly Suggestion[];
 	selectedSuggestion: number;
+	suggestionMode?: 'command' | 'mention';
+	suggestionStatus?: SuggestionStatus;
 	exitHint: boolean;
 	providerModel: string;
 	workingDirectory: string;
@@ -37,6 +39,8 @@ export const Composer = ({
 	queuedPrompts,
 	suggestions,
 	selectedSuggestion,
+	suggestionMode,
+	suggestionStatus,
 	exitHint,
 	providerModel,
 	workingDirectory,
@@ -48,9 +52,16 @@ export const Composer = ({
 	const after = value.slice(safeCursor + (current ? 1 : 0));
 	const cursorGlyph = current === '\n' || current === '' ? ' ' : current;
 	const suffix = current === '\n' ? `\n${after}` : after;
-	const visibleSuggestions = suggestionWindow(suggestions, selectedSuggestion);
+	const activeSuggestion = Math.max(0, Math.min(suggestions.length - 1, selectedSuggestion));
+	const visibleSuggestions = suggestionWindow(suggestions, activeSuggestion);
 	const showSpinner = status === 'thinking' || status === 'runningTool' || status === 'waitingPermission';
-	const controls = transcriptActive ? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close' : 'shift+enter newline';
+	const controls = transcriptActive
+		? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close'
+		: suggestionMode === 'mention'
+			? '↑↓ choose · tab/enter insert · esc close'
+			: suggestionMode === 'command'
+				? '↑↓ choose · tab complete · enter run'
+				: '@ files · shift+enter newline';
 
 	return (
 		<Box flexDirection="column" flexShrink={0}>
@@ -63,15 +74,25 @@ export const Composer = ({
 					))}
 				</Box>
 			) : null}
-			{suggestions.length > 0 ? (
+			{suggestions.length > 0 || suggestionStatus ? (
 				<Box marginX={1} paddingX={1} flexDirection="column" borderStyle="round" borderColor={theme.subtle}>
+					{suggestionStatus ? (
+						<Box>
+							{suggestionStatus.kind === 'loading' ? (
+								<ThemeProvider theme={spinnerTheme}>
+									<Spinner />
+									<Text> </Text>
+								</ThemeProvider>
+							) : null}
+							<Text color={suggestionStatus.kind === 'error' ? theme.warning : theme.muted}>
+								{suggestionStatus.message}
+							</Text>
+						</Box>
+					) : null}
 					{visibleSuggestions.map(({suggestion, index}) => (
-						<Box key={suggestion.label}>
-							<Text
-								color={index === selectedSuggestion ? theme.accent : theme.text}
-								bold={index === selectedSuggestion}
-							>
-								{index === selectedSuggestion ? '❯ ' : '  '}
+						<Box key={`${suggestion.kind}:${suggestion.label}`}>
+							<Text color={index === activeSuggestion ? theme.accent : theme.text} bold={index === activeSuggestion}>
+								{index === activeSuggestion ? '❯ ' : '  '}
 								{suggestion.label}
 							</Text>
 							<Text color={theme.muted}> {suggestion.description}</Text>

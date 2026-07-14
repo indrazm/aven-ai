@@ -1,9 +1,10 @@
 import {useCallback, useMemo, type RefObject} from 'react';
 import {useInput, usePaste} from 'ink';
-import {actionForCommand, commandItems, routeForCommand} from '../../commands/index.js';
-import {insertText, normalizeInput} from '../../composer/index.js';
+import {actionForCommand, routeForCommand} from '../../commands/index.js';
+import type {Suggestion, SuggestionStatus} from '../../composer/index.js';
+import {insertMention, insertText, normalizeInput, workspaceMentionsFor} from '../../composer/index.js';
 import {composerInputIntent} from '../../composer/index.js';
-import {commandSuggestionsFor} from '../../composer/index.js';
+import {commandSuggestionsFor, useProjectMentions} from '../../composer/index.js';
 import {transcriptInputIntent} from '../../conversation/index.js';
 import type {TranscriptHandle} from '../../conversation/index.js';
 import type {OverlayItem} from '../../overlays/index.js';
@@ -16,7 +17,9 @@ import type {RuntimeWorkspace} from './use-runtime-workspace.js';
 import {useOverlayController} from '../input/use-overlay-controller.js';
 
 type InputControllerResult = {
-	commandSuggestions: typeof commandItems;
+	suggestions: readonly Suggestion[];
+	suggestionMode?: 'command' | 'mention';
+	suggestionStatus?: SuggestionStatus;
 	overlayItems: readonly OverlayItem[];
 };
 
@@ -25,6 +28,7 @@ export const useAppInput = (
 	runtimeSession: RuntimeSession,
 	connection: RuntimeConnection,
 	workspace: RuntimeWorkspace,
+	projectRoot: string,
 ): InputControllerResult => {
 	const store = useAppStoreApi();
 	const editor = useAppStore((state) => state.editor);
@@ -37,13 +41,14 @@ export const useAppInput = (
 	const activeTurnId = useAppStore((state) => state.activeTurnId);
 	const armExit = useQuitController();
 	const overlayController = useOverlayController(connection, workspace);
+	const suggestionsVisible = !overlayController.active && !suggestionsHidden && inputMode === 'prompt';
 
 	const commandSuggestions = useMemo(() => {
-		return commandSuggestionsFor(
-			editor.value,
-			!overlayController.active && !suggestionsHidden && inputMode === 'prompt',
-		);
-	}, [editor.value, inputMode, overlayController.active, suggestionsHidden]);
+		return commandSuggestionsFor(editor.value, suggestionsVisible);
+	}, [editor.value, suggestionsVisible]);
+	const projectMentions = useProjectMentions(projectRoot, editor, inputMode, suggestionsVisible);
+	const suggestions: readonly Suggestion[] = projectMentions.query ? projectMentions.suggestions : commandSuggestions;
+	const suggestionMode = projectMentions.query ? 'mention' : suggestions.length > 0 ? 'command' : undefined;
 
 	const submit = useCallback(() => {
 		const state = store.getState();
@@ -59,8 +64,13 @@ export const useAppInput = (
 		if (commandRoute) overlayController.open(commandRoute);
 		else if (commandAction === 'newSession') void workspace.startNew();
 		else if (commandAction === 'resumeLastSession') void workspace.resumeLast();
-		else runtimeSession.submit(value, state.inputMode);
-	}, [overlayController, runtimeSession, store, workspace]);
+		else
+			runtimeSession.submit(
+				value,
+				state.inputMode,
+				state.inputMode === 'prompt' ? workspaceMentionsFor(value, projectMentions.entries) : [],
+			);
+	}, [overlayController, projectMentions.entries, runtimeSession, store, workspace]);
 
 	usePaste((text) => {
 		if (overlayController.handlePaste(text)) return;
@@ -118,8 +128,9 @@ export const useAppInput = (
 		const intent = composerInputIntent(input, key, {
 			editor,
 			inputMode,
-			suggestions: commandSuggestions,
+			suggestions,
 			suggestionIndex,
+			suggestionsVisible: Boolean(suggestionMode),
 		});
 		if (intent.type === 'armExit') armExit('d');
 		else if (intent.type === 'setEditor') {
@@ -130,9 +141,15 @@ export const useAppInput = (
 		else if (intent.type === 'setInputMode') actions.setInputMode(intent.mode);
 		else if (intent.type === 'openHelp') overlayController.open('help');
 		else if (intent.type === 'selectSuggestion') {
-			actions.setSuggestionIndex((current) =>
-				Math.max(0, Math.min(commandSuggestions.length - 1, current + intent.amount)),
-			);
+			actions.setSuggestionIndex((current) => Math.max(0, Math.min(suggestions.length - 1, current + intent.amount)));
+		} else if (intent.type === 'acceptSuggestion') {
+			const selected = suggestions[Math.max(0, Math.min(suggestionIndex, suggestions.length - 1))];
+			if (selected?.kind === 'mention') {
+				actions.setEditor((current) => insertMention(current, {path: selected.path, kind: selected.pathKind}));
+				actions.setSuggestionsHidden(true);
+			} else if (selected) {
+				actions.setEditor({value: selected.label, cursor: selected.label.length});
+			}
 		} else if (intent.type === 'history') {
 			const next = Math.max(-1, Math.min(overlayController.history.length - 1, historyIndex + intent.amount));
 			actions.setHistoryIndex(next);
@@ -141,5 +158,10 @@ export const useAppInput = (
 		} else if (intent.type === 'submit') submit();
 	});
 
-	return {commandSuggestions, overlayItems: overlayController.items};
+	return {
+		suggestions,
+		...(suggestionMode ? {suggestionMode} : {}),
+		...(projectMentions.status ? {suggestionStatus: projectMentions.status} : {}),
+		overlayItems: overlayController.items,
+	};
 };

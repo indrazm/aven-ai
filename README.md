@@ -20,6 +20,7 @@ On first launch, run `/setup` to choose a provider and add its API key.
 ## Features
 
 - Full-screen terminal interface with Markdown rendering
+- Fuzzy `@` mentions for project files and folders
 - File reading, editing, and writing with inline diffs
 - PTY-backed shell command execution
 - Project-scoped sessions and searchable history
@@ -33,6 +34,14 @@ Type a prompt and press `Enter`. Prefix a command with `!` to run it directly in
 ```text
 !git status
 ```
+
+Type `@` anywhere at a token boundary to find a non-ignored project file or folder. Use the arrow keys to choose a result, then press `Tab` or `Enter` to insert it:
+
+```text
+Review @src/modules/app/ and @"docs/release notes.md"
+```
+
+Mentions are project-relative references. Aven tells the agent which paths you selected, and the agent reads only what it needs with the existing file and search tools.
 
 Common slash commands:
 
@@ -49,13 +58,14 @@ Common slash commands:
 
 Useful controls:
 
-| Input                       | Action                |
-| --------------------------- | --------------------- |
-| `Enter`                     | Submit a prompt       |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline      |
-| `Page Up` / `Page Down`     | Scroll the transcript |
-| `Esc`                       | Close or cancel       |
-| `Ctrl+C`                    | Interrupt active work |
+| Input                       | Action                 |
+| --------------------------- | ---------------------- |
+| `Enter`                     | Submit a prompt        |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline       |
+| `@`, then `Tab` / `Enter`   | Mention a project path |
+| `Page Up` / `Page Down`     | Scroll the transcript  |
+| `Esc`                       | Close or cancel        |
+| `Ctrl+C`                    | Interrupt active work  |
 
 ## Local data
 

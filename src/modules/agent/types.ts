@@ -13,7 +13,13 @@ export type {ProviderCredentials} from '../providers/index.js';
 
 export type InputMode = 'prompt' | 'bash';
 export type AgentStatus = 'idle' | 'thinking' | 'runningTool' | 'waitingPermission' | 'error';
-export type SubmitRequest = {id: string; content: string; mode: InputMode};
+export type WorkspaceMention = {path: string; kind: 'file' | 'directory'};
+export type SubmitRequest = {
+	id: string;
+	content: string;
+	mode: InputMode;
+	mentions?: readonly WorkspaceMention[];
+};
 
 export type RuntimeEvent =
 	| {type: 'turn.started'; request: SubmitRequest}

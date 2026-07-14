@@ -10,6 +10,7 @@ import {safeErrorMessage} from '../../../utils/safe-error.js';
 import {eventToRuntimeEvents, type PendingToolCall} from '../events/stream-event-adapter.js';
 import {buildSystemPrompt} from '../prompts/system.js';
 import {loadProjectInstructions} from '../prompts/project-instructions.js';
+import {promptMessageFor} from '../prompts/workspace-mentions.js';
 import {createAgentRecovery} from './agent-recovery.js';
 import type {LexaRuntime} from '../../../libs/lexa/index.js';
 
@@ -65,7 +66,7 @@ export class PromptTurnExecutor {
 			.build();
 		const streamedTurn = agent
 			.session(sessionId, {metadata: {projectRoot: this.#projectRoot}})
-			.prompt(request.content)
+			.prompt(promptMessageFor(this.#projectRoot, request))
 			.withToolConcurrency(1)
 			.stream();
 		const stream = streamedTurn[Symbol.asyncIterator]();
