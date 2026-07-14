@@ -1,6 +1,6 @@
 export {AnviaAgentRuntime, type AnviaRuntimeOptions} from './core.js';
 export {MockRuntime} from './mock.js';
-export {buildSystemPrompt} from './prompts/system.js';
+export {buildSystemPrompt, type SystemPromptContext} from './prompts/system.js';
 export {
 	isConfigurableRuntime,
 	isProjectSessionRuntime,

@@ -63,12 +63,18 @@ const captureText = (capture: OutputCapture): {output: string; truncated: boolea
 	};
 };
 
+export const activeShell = (): string => {
+	if (process.platform === 'win32') return process.env.COMSPEC ?? 'powershell.exe';
+	return process.env.SHELL ?? '/bin/sh';
+};
+
 const shellCommand = (command: string): {file: string; args: string[]} => {
 	if (process.platform === 'win32') {
-		if (process.env.COMSPEC) return {file: process.env.COMSPEC, args: ['/d', '/s', '/c', command]};
-		return {file: 'powershell.exe', args: ['-NoLogo', '-NoProfile', '-Command', command]};
+		const file = activeShell();
+		if (process.env.COMSPEC) return {file, args: ['/d', '/s', '/c', command]};
+		return {file, args: ['-NoLogo', '-NoProfile', '-Command', command]};
 	}
-	return {file: process.env.SHELL ?? '/bin/sh', args: ['-lc', command]};
+	return {file: activeShell(), args: ['-lc', command]};
 };
 
 const ensureSpawnHelperIsExecutable = (): void => {

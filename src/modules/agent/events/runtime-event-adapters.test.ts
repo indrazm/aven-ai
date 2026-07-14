@@ -222,4 +222,67 @@ describe('runtime file-tool event adaptation', () => {
 			}),
 		);
 	});
+
+	it('keeps recovery guidance in model context without rendering it in the transcript', () => {
+		const queue: PendingToolCall[] = [];
+		eventToRuntimeEvents(
+			toolCallEvent('read-guidance', 'Read', {file_path: '/workspace/file.txt'}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+		const events = eventToRuntimeEvents(
+			toolResultEvent('read-guidance', 'Read', {
+				status: 'error',
+				tool: 'Read',
+				file_path: '/workspace/file.txt',
+				error: 'File not found.',
+				agent_guidance: 'Internal recovery instructions that must stay hidden.',
+			}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: 'message.replaced',
+				message: expect.objectContaining({status: 'error', detail: 'File not found.'}),
+			}),
+		);
+		expect(JSON.stringify(events)).not.toContain('Internal recovery instructions');
+	});
+
+	it('renders wrapped malformed tool failures without exposing recovery guidance', () => {
+		const queue: PendingToolCall[] = [];
+		eventToRuntimeEvents(
+			toolCallEvent('exec-guidance', 'ExecCommand', {command: 'pwd'}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+		const events = eventToRuntimeEvents(
+			toolResultEvent('exec-guidance', 'ExecCommand', {
+				status: 'error',
+				tool: 'ExecCommand',
+				error: 'Malformed tool output.',
+				agent_guidance: 'Try a different strategy.',
+			}),
+			'request',
+			'assistant',
+			queue,
+			'',
+		);
+
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: 'message.replaced',
+				message: expect.objectContaining({status: 'error', detail: 'Malformed tool output.'}),
+			}),
+		);
+		expect(JSON.stringify(events)).not.toContain('Try a different strategy');
+	});
 });

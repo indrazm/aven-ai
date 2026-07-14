@@ -19,9 +19,10 @@ import {useRuntimeWorkspace} from '../services/use-runtime-workspace.js';
 export type AppProps = {
 	mockResponseDelay?: number;
 	runtime?: AgentRuntime;
+	workingDirectory?: string;
 };
 
-const AppShell = ({runtime}: {runtime: AgentRuntime}) => {
+const AppShell = ({runtime, workingDirectory}: {runtime: AgentRuntime; workingDirectory: string}) => {
 	const {columns, rows} = useWindowSize();
 	const session = useAppStore(useShallow(selectSession));
 	const composer = useAppStore(useShallow(selectComposer));
@@ -57,13 +58,18 @@ const AppShell = ({runtime}: {runtime: AgentRuntime}) => {
 				selectedSuggestion={composer.suggestionIndex}
 				exitHint={navigation.exitHint}
 				providerModel={providerModel}
+				workingDirectory={workspace.projectRoot ?? workingDirectory}
 				transcriptActive={navigation.transcriptMode}
 			/>
 		</Box>
 	);
 };
 
-export const App = ({mockResponseDelay = 700, runtime: injectedRuntime}: AppProps) => {
+export const App = ({
+	mockResponseDelay = 700,
+	runtime: injectedRuntime,
+	workingDirectory = process.cwd(),
+}: AppProps) => {
 	const runtime = useMemo(
 		() => injectedRuntime ?? new MockRuntime(mockResponseDelay),
 		[injectedRuntime, mockResponseDelay],
@@ -81,7 +87,7 @@ export const App = ({mockResponseDelay = 700, runtime: injectedRuntime}: AppProp
 
 	return (
 		<AppProvider initialMessages={initialMessages}>
-			<AppShell runtime={runtime} />
+			<AppShell runtime={runtime} workingDirectory={workingDirectory} />
 		</AppProvider>
 	);
 };

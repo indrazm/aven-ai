@@ -1,4 +1,5 @@
 export {
+	activeShell,
 	commandResultDetail,
 	NodePtyRunner,
 	type ExecCommandOptions,

@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+const agentGuidanceSchema = z.string().optional().describe('Internal recovery guidance for the agent.');
+
 export const readInputSchema = z
 	.object({
 		file_path: z.string().min(1).describe('Absolute path to the text file to read.'),
@@ -30,6 +32,7 @@ const fileErrorSchema = z
 		tool: z.enum(['Read', 'Edit', 'Write']),
 		file_path: z.string(),
 		error: z.string(),
+		agent_guidance: agentGuidanceSchema,
 	})
 	.strict();
 
@@ -43,6 +46,7 @@ const readSuccessSchema = z
 		num_lines: z.number().int().nonnegative(),
 		total_lines: z.number().int().nonnegative(),
 		truncated: z.boolean(),
+		agent_guidance: agentGuidanceSchema,
 	})
 	.strict();
 
@@ -55,6 +59,7 @@ const readUnchangedSchema = z
 		num_lines: z.number().int().nonnegative(),
 		total_lines: z.number().int().nonnegative(),
 		message: z.string(),
+		agent_guidance: agentGuidanceSchema,
 	})
 	.strict();
 
@@ -66,6 +71,7 @@ const editSuccessSchema = z
 		replacements: z.number().int().positive(),
 		operation_id: z.string(),
 		message: z.string(),
+		agent_guidance: agentGuidanceSchema,
 	})
 	.strict();
 
@@ -77,6 +83,7 @@ const writeSuccessSchema = z
 		operation: z.enum(['create', 'update']),
 		operation_id: z.string(),
 		message: z.string(),
+		agent_guidance: agentGuidanceSchema,
 	})
 	.strict();
 

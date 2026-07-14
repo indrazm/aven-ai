@@ -11,7 +11,17 @@ export const execResultSchema = z.object({
 	timedOut: z.boolean(),
 	truncated: z.boolean(),
 	output: z.string(),
+	agent_guidance: z.string().optional(),
 });
+
+const genericToolFailureSchema = z
+	.object({
+		status: z.literal('error'),
+		tool: z.string(),
+		error: z.string(),
+		agent_guidance: z.string().optional(),
+	})
+	.strict();
 
 export const safeJson = (value: unknown): string => {
 	try {
@@ -54,6 +64,15 @@ const parseExecResult = (value: string): ExecCommandResult | undefined => {
 export const parseFileResult = (value: string): FileToolResult | undefined => {
 	try {
 		return fileToolResultSchema.parse(JSON.parse(value));
+	} catch {
+		return undefined;
+	}
+};
+
+const parseGenericToolFailure = (value: string): z.infer<typeof genericToolFailureSchema> | undefined => {
+	try {
+		const parsed = genericToolFailureSchema.safeParse(JSON.parse(value));
+		return parsed.success ? parsed.data : undefined;
 	} catch {
 		return undefined;
 	}
@@ -118,6 +137,18 @@ export const toolMessageFromSerializedResult = (
 	if (execResult) return toolMessageFromResult(id, execResult);
 	const fileResult = parseFileResult(serializedResult);
 	if (fileResult) return fileToolMessageFromResult(id, fileResult);
+	const genericFailure = parseGenericToolFailure(serializedResult);
+	if (genericFailure) {
+		return {
+			id,
+			kind: 'tool',
+			name: genericFailure.tool,
+			status: 'error',
+			summary,
+			detail: genericFailure.error,
+			group: groupForTool(genericFailure.tool),
+		};
+	}
 	return {
 		id,
 		kind: 'tool',

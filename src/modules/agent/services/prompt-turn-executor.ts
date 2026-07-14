@@ -5,10 +5,14 @@ import type {SubmitRequest} from '../types.js';
 import {createExecCommandTool} from '../tools/exec-command.js';
 import {createFileTools} from '../tools/files/create-file-tools.js';
 import type {FileToolService} from '../tools/files/file-tool-service.js';
-import type {PtyRunner} from '../../../libs/pty/index.js';
+import {activeShell, type PtyRunner} from '../../../libs/pty/index.js';
 import {safeErrorMessage} from '../../../utils/safe-error.js';
 import {eventToRuntimeEvents, type PendingToolCall} from '../events/stream-event-adapter.js';
 import {buildSystemPrompt} from '../prompts/system.js';
+import {loadProjectInstructions} from '../prompts/project-instructions.js';
+import {createAgentRecovery} from './agent-recovery.js';
+
+export const MAX_AGENT_TURNS = 50;
 
 export class PromptTurnExecutor {
 	readonly #files: FileToolService;
@@ -30,12 +34,24 @@ export class PromptTurnExecutor {
 		sessionId: string,
 	): AsyncIterable<RuntimeEvent> {
 		yield {type: 'status.changed', status: 'thinking'};
+		const projectInstructions = await loadProjectInstructions(this.#projectRoot);
+		if (signal.aborted) throw signal.reason ?? new Error('Aborted');
+		const recovery = createAgentRecovery();
 		const tools = [createExecCommandTool(this.#pty, signal), ...createFileTools(this.#files, signal)];
 		const agent = new AgentBuilder('aven', model)
-			.instructions(buildSystemPrompt(this.#projectRoot))
+			.instructions(
+				buildSystemPrompt({
+					projectRoot: this.#projectRoot,
+					platform: process.platform,
+					shell: activeShell(),
+					projectInstructions,
+				}),
+			)
 			.tools(tools)
+			.middleware(recovery.middleware)
+			.hook(recovery.hook)
 			.memory(this.#memory, {savePolicy: 'turn'})
-			.defaultMaxTurns(8)
+			.defaultMaxTurns(MAX_AGENT_TURNS)
 			.build();
 		const streamedTurn = agent
 			.session(sessionId, {metadata: {projectRoot: this.#projectRoot}})

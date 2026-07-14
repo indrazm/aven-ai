@@ -23,12 +23,7 @@ type Result = {
 	scrollTop: number;
 	stickyRow: TranscriptRow | undefined;
 	topPadding: number;
-	hasUnseen: boolean;
-	pinned: boolean;
-	rowCount: number;
 };
-
-const HEADER_HEIGHT = 1;
 
 export const useTranscriptController = (
 	messages: readonly UiMessage[],
@@ -45,10 +40,8 @@ export const useTranscriptController = (
 	const scrollTopRef = useRef(0);
 	const [pinned, setPinned] = useState(true);
 	const pinnedRef = useRef(true);
-	const [hasUnseen, setHasUnseen] = useState(false);
 	const [selection, setSelection] = useState<SelectionState | null>(null);
 	const selectionRef = useRef<SelectionState | null>(null);
-	const previousMessages = useRef(messages);
 	const lastClick = useRef({time: 0, row: -1, column: -1, count: 0});
 
 	const stickyRow = useMemo(() => {
@@ -60,7 +53,7 @@ export const useTranscriptController = (
 		return undefined;
 	}, [pinned, rows, scrollTop]);
 	const stickyHeight = stickyRow ? 1 : 0;
-	const viewportHeight = Math.max(1, (metrics.height || 1) - HEADER_HEIGHT - stickyHeight);
+	const viewportHeight = Math.max(1, (metrics.height || 1) - stickyHeight);
 	const maxScroll = Math.max(0, rows.length - viewportHeight);
 	// Follow a growing response in the same render that adds its rows. Waiting
 	// for an effect produces a stale frame followed by a visible jump.
@@ -76,7 +69,6 @@ export const useTranscriptController = (
 			const atBottom = clamped >= maximum;
 			setPinned(atBottom);
 			pinnedRef.current = atBottom;
-			if (atBottom) setHasUnseen(false);
 		},
 		[rows.length, viewportHeight],
 	);
@@ -85,12 +77,6 @@ export const useTranscriptController = (
 		if (!metrics.hasMeasured) return;
 		scrollTopRef.current = visibleScrollTop;
 	}, [metrics.hasMeasured, visibleScrollTop]);
-
-	useEffect(() => {
-		const changed = messages !== previousMessages.current;
-		if (changed && !pinnedRef.current) setHasUnseen(true);
-		previousMessages.current = messages;
-	}, [messages]);
 
 	useEffect(() => {
 		selectionRef.current = selection;
@@ -139,12 +125,7 @@ export const useTranscriptController = (
 					updateScroll(scrollTopRef.current + event.deltaY * 3);
 					return;
 				}
-				if (hasUnseen && localY < HEADER_HEIGHT && event.type === 'down') {
-					updateScroll(maxScroll);
-					return;
-				}
-
-				const bodyTop = HEADER_HEIGHT + stickyHeight + topPadding;
+				const bodyTop = stickyHeight + topPadding;
 				const bodyY = localY - bodyTop;
 				const rawRowIndex = visibleScrollTop + bodyY;
 				const dragging = Boolean(selectionRef.current?.dragging && (event.type === 'move' || event.type === 'up'));
@@ -183,7 +164,7 @@ export const useTranscriptController = (
 					);
 				}
 			}),
-		[hasUnseen, maxScroll, metrics, rows, stickyHeight, subscribeMouse, topPadding, updateScroll, visibleScrollTop],
+		[maxScroll, metrics, rows, stickyHeight, subscribeMouse, topPadding, updateScroll, visibleScrollTop],
 	);
 
 	return {
@@ -192,8 +173,5 @@ export const useTranscriptController = (
 		scrollTop: visibleScrollTop,
 		stickyRow,
 		topPadding,
-		hasUnseen,
-		pinned,
-		rowCount: rows.length,
 	};
 };

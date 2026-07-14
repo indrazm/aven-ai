@@ -15,14 +15,8 @@ type Props = {
 	selectedSuggestion: number;
 	exitHint: boolean;
 	providerModel: string;
+	workingDirectory: string;
 	transcriptActive: boolean;
-};
-
-const statusLabel: Record<Exclude<AgentStatus, 'idle'>, string> = {
-	thinking: 'Thinking…',
-	runningTool: 'Running tool…',
-	waitingPermission: 'Waiting for permission',
-	error: 'Stopped',
 };
 
 const spinnerTheme = extendTheme(defaultTheme, {
@@ -30,7 +24,6 @@ const spinnerTheme = extendTheme(defaultTheme, {
 		Spinner: {
 			styles: {
 				frame: () => ({color: theme.accent}),
-				label: () => ({color: theme.muted}),
 			},
 		},
 	},
@@ -46,6 +39,7 @@ export const Composer = ({
 	selectedSuggestion,
 	exitHint,
 	providerModel,
+	workingDirectory,
 	transcriptActive,
 }: Props) => {
 	const safeCursor = Math.max(0, Math.min(cursor, value.length));
@@ -55,9 +49,8 @@ export const Composer = ({
 	const cursorGlyph = current === '\n' || current === '' ? ' ' : current;
 	const suffix = current === '\n' ? `\n${after}` : after;
 	const visibleSuggestions = suggestionWindow(suggestions, selectedSuggestion);
-	const controls = transcriptActive
-		? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close'
-		: 'shift+enter newline · ctrl+o scroll · ctrl+c×2 exit';
+	const showSpinner = status === 'thinking' || status === 'runningTool' || status === 'waitingPermission';
+	const controls = transcriptActive ? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close' : 'shift+enter newline';
 
 	return (
 		<Box flexDirection="column" flexShrink={0}>
@@ -105,17 +98,23 @@ export const Composer = ({
 				</Text>
 			</Box>
 			<Box height={1} flexShrink={0} paddingX={2} justifyContent="space-between" overflow="hidden">
-				{exitHint ? (
-					<Text color={theme.warning}>Press again to exit</Text>
-				) : status === 'thinking' ? (
-					<ThemeProvider theme={spinnerTheme}>
-						<Spinner label={statusLabel[status]} />
-					</ThemeProvider>
-				) : status === 'idle' ? (
+				<Box minWidth={0} flexShrink={1} overflow="hidden">
+					{exitHint ? (
+						<Text color={theme.warning}>Press again to exit · </Text>
+					) : showSpinner ? (
+						<ThemeProvider theme={spinnerTheme}>
+							<Spinner />
+							<Text> </Text>
+						</ThemeProvider>
+					) : null}
+					<Box minWidth={0} flexShrink={1} overflow="hidden">
+						<Text color={theme.muted} wrap="truncate-middle">
+							{workingDirectory}
+						</Text>
+					</Box>
+					<Text color={theme.subtle}> · </Text>
 					<Text color={theme.provider}>{providerModel}</Text>
-				) : (
-					<Text color={theme.muted}>{statusLabel[status]}</Text>
-				)}
+				</Box>
 				<Text color={transcriptActive ? theme.accent : theme.muted} wrap="truncate-end">
 					{controls}
 				</Text>

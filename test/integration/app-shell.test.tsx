@@ -75,27 +75,43 @@ describe('App shell and composer', () => {
 	afterEach(() => vi.useRealTimers());
 
 	it('renders the full-screen coding agent surface', async () => {
-		const {lastFrame, unmount} = render(<App />);
+		const {lastFrame, unmount} = render(<App workingDirectory="/workspace/aven" />);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		const frame = lastFrame() ?? '';
 		expect(frame).toContain('Welcome to Aven AI. Local mock mode is active.');
 		expect(frame).not.toContain('◆ AVEN CODE');
 		expect(frame).not.toContain('by anvia');
 		expect(frame).not.toContain('Engineering agent for the terminal');
+		expect(frame).not.toContain('CONVERSATION');
+		expect(frame).not.toContain('pgup/pgdn scroll');
+		expect(frame).toContain('/workspace/aven');
 		expect(frame).toContain('Mock · local');
 		expect(frame).toContain('│ ❯ ');
-		expect(frame).toContain('ctrl+c×2 exit');
+		expect(frame).toContain('shift+enter newline');
+		expect(frame).not.toContain('ctrl+o scroll');
+		expect(frame).not.toContain('ctrl+c×2 exit');
+		const statusLine = frame.split('\n').find((line) => line.includes('/workspace/aven')) ?? '';
+		expect(statusLine).toContain('Mock · local');
+		expect(statusLine.indexOf('/workspace/aven')).toBeLessThan(statusLine.indexOf('Mock · local'));
 		unmount();
 	});
 
 	it('accepts input and returns a local mock response', async () => {
 		vi.useFakeTimers();
-		const {lastFrame, stdin, unmount} = render(<App mockResponseDelay={50} />);
+		const {lastFrame, stdin, unmount} = render(<App mockResponseDelay={50} workingDirectory="/workspace/aven" />);
 		stdin.write('hello');
 		await vi.advanceTimersByTimeAsync(0);
 		stdin.write('\r');
 		await vi.advanceTimersByTimeAsync(0);
-		expect(lastFrame()).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] Thinking…/u);
+		const thinkingFrame = lastFrame() ?? '';
+		expect(thinkingFrame).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u);
+		expect(thinkingFrame).not.toContain('Thinking…');
+		expect(thinkingFrame).not.toContain('Running tool…');
+		const statusLine = thinkingFrame.split('\n').find((line) => line.includes('/workspace/aven')) ?? '';
+		expect(statusLine).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u);
+		expect(statusLine).toContain('Mock · local');
+		expect(statusLine.search(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u)).toBeLessThan(statusLine.indexOf('/workspace/aven'));
+		expect(statusLine.indexOf('/workspace/aven')).toBeLessThan(statusLine.indexOf('Mock · local'));
 		await vi.advanceTimersByTimeAsync(50);
 		expect(lastFrame()).toContain('Mock · local');
 		unmount();
@@ -125,7 +141,6 @@ describe('App shell and composer', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		const pagedFirstLine = Number(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]);
 		expect(pagedFirstLine).toBeLessThan(bottomFirstLine);
-		expect(lastFrame()).toContain('pgup/pgdn scroll');
 
 		stdin.write('\u001B[6~');
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -163,7 +178,6 @@ describe('App shell and composer', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(/streamed line (\d+)/u.exec(lastFrame() ?? '')?.[1]).toBe(readingLine);
-		expect(lastFrame()).toContain('new output');
 		expect(lastFrame()).not.toContain('streamed line 40');
 
 		stdin.write('\u000f');
@@ -230,7 +244,6 @@ describe('App shell and composer', () => {
 
 		stdin.write('\u000f');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(lastFrame()).toContain('TRANSCRIPT');
 		expect(lastFrame()).toContain('tool output 12');
 		expect(lastFrame()).not.toContain('ctrl+o to expand');
 
