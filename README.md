@@ -6,12 +6,14 @@ Aven lets you chat with AI models, inspect tool calls, edit files, run commands,
 
 ## Install
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer and a supported platform: macOS on Apple Silicon or Intel, or Linux x64 with glibc 2.39 or newer.
 
 ```sh
 npm install --global aven-ai
 aven
 ```
+
+The install includes the matching [Lexa](https://github.com/anvia-hq/lexa) native code-intelligence binary. Aven verifies that required binary before opening the terminal interface.
 
 On first launch, run `/setup` to choose a provider and add its API key.
 
@@ -42,21 +44,18 @@ Common slash commands:
 | `/new`         | Start a new session                  |
 | `/resume`      | Find and resume a previous session   |
 | `/resume-last` | Resume the most recent session       |
-| `/history`     | Search prompt history                |
 | `/commands`    | Browse all available commands        |
 | `/help`        | Show controls and keyboard shortcuts |
 
 Useful controls:
 
-| Input                       | Action                       |
-| --------------------------- | ---------------------------- |
-| `Enter`                     | Submit a prompt              |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline             |
-| `Ctrl+O`                    | Toggle transcript navigation |
-| `Page Up` / `Page Down`     | Scroll the transcript        |
-| `Ctrl+R`                    | Open prompt history          |
-| `Esc`                       | Close or cancel              |
-| `Ctrl+C`                    | Interrupt active work        |
+| Input                       | Action                |
+| --------------------------- | --------------------- |
+| `Enter`                     | Submit a prompt       |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline      |
+| `Page Up` / `Page Down`     | Scroll the transcript |
+| `Esc`                       | Close or cancel       |
+| `Ctrl+C`                    | Interrupt active work |
 
 ## Local data
 

@@ -30,7 +30,6 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 		() =>
 			buildOverlayItems(overlay, {
 				messages,
-				promptHistory,
 				connection: {state: connection.state, providers: connection.providers, models: connection.models},
 				workspace: {
 					supported: workspace.supported,
@@ -44,7 +43,6 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 			connection.state,
 			messages,
 			overlay,
-			promptHistory,
 			workspace.error,
 			workspace.sessions,
 			workspace.supported,
@@ -128,10 +126,7 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 					return true;
 				}
 				const intent = overlaySelectionIntent(overlay, items, connection.state, connection.providers);
-				if (intent.type === 'restorePrompt') {
-					actions.setEditor({value: intent.value, cursor: intent.value.length});
-					actions.setOverlay(null);
-				} else if (intent.type === 'switchSession') {
+				if (intent.type === 'switchSession') {
 					void workspace.switchSession(intent.sessionId).then((switched) => {
 						if (switched) store.getState().setOverlay(null);
 					});

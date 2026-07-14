@@ -7,7 +7,7 @@ Aven AI is organized as product modules backed by small infrastructure libraries
 | Package                | Responsibility                                                                               |
 | ---------------------- | -------------------------------------------------------------------------------------------- |
 | `utils`                | Small dependency-free helpers shared across packages                                         |
-| `libs`                 | Configuration, provider clients, PTY, SQLite session storage, and terminal adapters          |
+| `libs`                 | Configuration, Lexa, provider, PTY, SQLite session storage, and terminal adapters            |
 | `modules/providers`    | Provider catalog, connection lifecycle, and model selection                                  |
 | `modules/sessions`     | Project-session identity, titles, persistence coordination, and memory selection             |
 | `modules/conversation` | Conversation message contracts, transcript rendering, wrapping, and selection                |
@@ -25,7 +25,7 @@ The architecture test enforces the dependency matrix, public-index imports, and 
 
 `modules/agent/core.ts` contains `AnviaAgentRuntime`, the facade consumed by the application. It coordinates providers, project sessions, direct commands, prompt turns, memory, file tools, and event translation while the UI depends only on runtime contracts from `modules/agent`.
 
-The system prompt is assembled by `modules/agent/prompts/system.ts` from explicit identity, file-tool, and command instruction sections. Dynamic project-root context is JSON-escaped during assembly.
+The system prompt is assembled by `modules/agent/prompts/system.ts` from explicit identity, file-tool, command, and version-matched Lexa instruction sections. Dynamic values are XML-escaped, packaged Lexa guidance is CDATA-safe, and project instructions follow it so their scope remains clear.
 
 ## State and effects
 

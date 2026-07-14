@@ -5,6 +5,10 @@ import type {ProjectInstructionBundle} from './project-instructions.js';
 import {workflowInstructions} from './workflow.js';
 
 export type SystemPromptContext = {
+	lexa: {
+		skill: string;
+		version: string;
+	};
 	projectRoot: string;
 	platform: string;
 	shell: string;
@@ -58,6 +62,15 @@ const projectInstructionLines = ({files, omittedPaths, warnings}: ProjectInstruc
 	return output;
 };
 
+const lexaInstructionLines = ({skill, version}: SystemPromptContext['lexa']): string[] => [
+	`<lexa version=${xmlAttribute(version)}>`,
+	'Aven manages this required Lexa installation and exposes `lexa` on the command PATH. Do not install or upgrade Lexa during an agent run. Core safety and tool contracts take priority; explicit user instructions override the packaged Lexa guidance.',
+	'<skill><![CDATA[',
+	cdata(skill),
+	']]></skill>',
+	'</lexa>',
+];
+
 export const buildSystemPrompt = (context: SystemPromptContext): string =>
 	[
 		...identityInstructions,
@@ -74,6 +87,8 @@ export const buildSystemPrompt = (context: SystemPromptContext): string =>
 		...taggedLines('file_tool_rules', fileToolInstructions),
 		'',
 		...taggedLines('command_rules', commandInstructions),
+		'',
+		...lexaInstructionLines(context.lexa),
 		'',
 		...projectInstructionLines(context.projectInstructions),
 	].join('\n');

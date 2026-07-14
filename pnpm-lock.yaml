@@ -32,6 +32,9 @@ importers:
       ink:
         specifier: ^7.1.0
         version: 7.1.0(@types/react@19.2.17)(react@19.2.7)
+      lexa-index:
+        specifier: 0.10.0
+        version: 0.10.0
       marked:
         specifier: ^18.0.6
         version: 18.0.6
@@ -1750,6 +1753,26 @@ packages:
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
+
+  lexa-index-darwin-arm64@0.10.0:
+    resolution: {integrity: sha512-32A+XZXwVw6G/9KCKvpo/03Smj1qKnpn+05VUVDsYYU08Zmz+W7ycWwlrnhptK1R9Aq5MeFeHN5JJmVv3zoaEA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  lexa-index-darwin-x64@0.10.0:
+    resolution: {integrity: sha512-0ePib0D+cpG3106q/RPItLTVdTdXpwNYp3HqRBMdpAT34V48P0IAS6POT1mbsviyFX5dgXSezjX3nudceWe4xg==}
+    cpu: [x64]
+    os: [darwin]
+
+  lexa-index-linux-x64@0.10.0:
+    resolution: {integrity: sha512-NYHkqHfG5mZ5ZvyHc4SFv3EC0y94o0m6/pZ6Lz18ivsqLyRCn3P+BfnTCEIEZ6svFXOUKTzhwixbNaYpC9tlDQ==}
+    cpu: [x64]
+    os: [linux]
+
+  lexa-index@0.10.0:
+    resolution: {integrity: sha512-D0rriloosNfHuTp6CGhDmCoVrc9YhKDigLZoRm16CQathrN3wou8GyYB4KHECoSjdBiB+BVo7EOJLdl2v6iRjg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -4150,6 +4173,21 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
+
+  lexa-index-darwin-arm64@0.10.0:
+    optional: true
+
+  lexa-index-darwin-x64@0.10.0:
+    optional: true
+
+  lexa-index-linux-x64@0.10.0:
+    optional: true
+
+  lexa-index@0.10.0:
+    optionalDependencies:
+      lexa-index-darwin-arm64: 0.10.0
+      lexa-index-darwin-x64: 0.10.0
+      lexa-index-linux-x64: 0.10.0
 
   lightningcss-android-arm64@1.32.0:
     optional: true

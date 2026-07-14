@@ -1,5 +1,14 @@
-import {describe, expect, it} from 'vitest';
+import {chmod, mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {afterEach, describe, expect, it} from 'vitest';
 import {NodePtyRunner} from './pty-runner.js';
+
+const directories: string[] = [];
+
+afterEach(async () => {
+	await Promise.all(directories.splice(0).map((directory) => rm(directory, {recursive: true, force: true})));
+});
 
 describe('NodePtyRunner', () => {
 	it('runs a command in a PTY and strips terminal escapes', async () => {
@@ -13,6 +22,18 @@ describe('NodePtyRunner', () => {
 		const runner = new NodePtyRunner();
 		const result = await runner.run("printf 'failed\\n'; exit 7");
 		expect(result).toMatchObject({exitCode: 7, output: 'failed'});
+		runner.dispose();
+	});
+
+	it('prepends managed executable directories to command PATH', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'aven-pty-path-'));
+		directories.push(directory);
+		const executable = join(directory, 'aven-managed-command');
+		await writeFile(executable, '#!/bin/sh\nprintf managed');
+		await chmod(executable, 0o755);
+		const runner = new NodePtyRunner(undefined, {pathEntries: [directory]});
+
+		await expect(runner.run('aven-managed-command')).resolves.toMatchObject({exitCode: 0, output: 'managed'});
 		runner.dispose();
 	});
 

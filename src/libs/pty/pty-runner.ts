@@ -1,7 +1,7 @@
 import process from 'node:process';
 import {accessSync, chmodSync, constants, existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {dirname, join} from 'node:path';
+import {delimiter, dirname, join} from 'node:path';
 import * as nodePty from 'node-pty';
 import stripAnsi from 'strip-ansi';
 
@@ -24,6 +24,10 @@ export interface PtyRunner {
 	run(command: string, options?: ExecCommandOptions): Promise<ExecCommandResult>;
 	dispose(): void;
 }
+
+export type NodePtyRunnerOptions = {
+	pathEntries?: readonly string[];
+};
 
 const OUTPUT_LIMIT = 64 * 1024;
 const OUTPUT_HALF = OUTPUT_LIMIT / 2;
@@ -98,11 +102,13 @@ export class NodePtyRunner implements PtyRunner {
 	readonly cwd: string;
 	readonly #active = new Set<nodePty.IPty>();
 	readonly #forceTimers = new Map<nodePty.IPty, NodeJS.Timeout>();
+	readonly #pathEntries: readonly string[];
 	#disposed = false;
 
-	constructor(cwd = process.cwd()) {
+	constructor(cwd = process.cwd(), options: NodePtyRunnerOptions = {}) {
 		ensureSpawnHelperIsExecutable();
 		this.cwd = cwd;
+		this.#pathEntries = [...(options.pathEntries ?? [])];
 	}
 
 	run(command: string, options: ExecCommandOptions = {}): Promise<ExecCommandResult> {
@@ -115,6 +121,9 @@ export class NodePtyRunner implements PtyRunner {
 		const environment = Object.fromEntries(
 			Object.entries(process.env).flatMap(([key, value]) => (value === undefined ? [] : [[key, value]])),
 		);
+		if (this.#pathEntries.length > 0) {
+			environment.PATH = [...this.#pathEntries, environment.PATH].filter(Boolean).join(delimiter);
+		}
 		const terminal = nodePty.spawn(shell.file, shell.args, {
 			name: 'xterm-256color',
 			cwd: this.cwd,

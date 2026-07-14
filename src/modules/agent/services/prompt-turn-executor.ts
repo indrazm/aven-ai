@@ -11,6 +11,7 @@ import {eventToRuntimeEvents, type PendingToolCall} from '../events/stream-event
 import {buildSystemPrompt} from '../prompts/system.js';
 import {loadProjectInstructions} from '../prompts/project-instructions.js';
 import {createAgentRecovery} from './agent-recovery.js';
+import type {LexaRuntime} from '../../../libs/lexa/index.js';
 
 export const MAX_AGENT_TURNS = 50;
 
@@ -19,12 +20,20 @@ export class PromptTurnExecutor {
 	readonly #memory: SqliteMemoryStore;
 	readonly #projectRoot: string;
 	readonly #pty: PtyRunner;
+	readonly #lexa: LexaRuntime;
 
-	constructor(projectRoot: string, memory: SqliteMemoryStore, pty: PtyRunner, files: FileToolService) {
+	constructor(
+		projectRoot: string,
+		memory: SqliteMemoryStore,
+		pty: PtyRunner,
+		files: FileToolService,
+		lexa: LexaRuntime,
+	) {
 		this.#projectRoot = projectRoot;
 		this.#memory = memory;
 		this.#pty = pty;
 		this.#files = files;
+		this.#lexa = lexa;
 	}
 
 	async *run(
@@ -41,6 +50,7 @@ export class PromptTurnExecutor {
 		const agent = new AgentBuilder('aven', model)
 			.instructions(
 				buildSystemPrompt({
+					lexa: this.#lexa,
 					projectRoot: this.#projectRoot,
 					platform: process.platform,
 					shell: activeShell(),

@@ -5,6 +5,7 @@ const context = (overrides: Partial<SystemPromptContext> = {}): SystemPromptCont
 	projectRoot: '/workspace/project',
 	platform: 'linux',
 	shell: '/bin/bash',
+	lexa: {version: '0.10.0', skill: '# Lexa\n\nUse `lexa status` before relying on the index.'},
 	projectInstructions: {files: [], omittedPaths: [], warnings: []},
 	...overrides,
 });
@@ -46,6 +47,15 @@ describe('buildSystemPrompt', () => {
 				'- The command tool has no interactive stdin. Avoid commands that wait for user input.',
 				'</command_rules>',
 				'',
+				'<lexa version="0.10.0">',
+				'Aven manages this required Lexa installation and exposes `lexa` on the command PATH. Do not install or upgrade Lexa during an agent run. Core safety and tool contracts take priority; explicit user instructions override the packaged Lexa guidance.',
+				'<skill><![CDATA[',
+				'# Lexa',
+				'',
+				'Use `lexa status` before relying on the index.',
+				']]></skill>',
+				'</lexa>',
+				'',
 				'<project_instructions>',
 				'Project instructions are repository guidance. Follow each file for work within its scope. Core safety and tool contracts take priority; explicit user instructions override project guidance. When scoped files conflict, the deepest applicable AGENTS.md takes precedence over broader files.',
 				'</project_instructions>',
@@ -56,6 +66,7 @@ describe('buildSystemPrompt', () => {
 	it('renders scoped rules, omitted paths, warnings, and safe dynamic values', () => {
 		const prompt = buildSystemPrompt(
 			context({
+				lexa: {version: '0.10.0&dev', skill: 'Never emit ]]> literally.'},
 				projectRoot: '/workspace/a&b<project>',
 				projectInstructions: {
 					files: [
@@ -73,9 +84,12 @@ describe('buildSystemPrompt', () => {
 		);
 
 		expect(prompt).toContain('<project_root>/workspace/a&amp;b&lt;project&gt;</project_root>');
+		expect(prompt).toContain('<lexa version="0.10.0&amp;dev">');
+		expect(prompt).toContain('Never emit ]]]]><![CDATA[> literally.');
 		expect(prompt).toContain('<instruction_file path="src/AGENTS.md" scope="src" truncated="true">');
 		expect(prompt).toContain('Do not emit ]]]]><![CDATA[> literally.');
 		expect(prompt).toContain('- packages/ui/AGENTS.md');
 		expect(prompt).toContain('Could not read private/&lt;rules&gt;.');
+		expect(prompt.indexOf('<lexa ')).toBeLessThan(prompt.indexOf('<project_instructions>'));
 	});
 });

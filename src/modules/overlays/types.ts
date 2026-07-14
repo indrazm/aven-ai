@@ -2,7 +2,6 @@ import type {ProviderId} from '../providers/index.js';
 
 export type OverlayRoute =
 	| 'help'
-	| 'history'
 	| 'sessions'
 	| 'commands'
 	| 'connect'

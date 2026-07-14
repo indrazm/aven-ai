@@ -95,10 +95,6 @@ export const useAppInput = (
 			actions.setTranscriptMode(true);
 			return;
 		}
-		if (key.ctrl && input === 'r') {
-			overlayController.open('history');
-			return;
-		}
 		if (key.pageUp || key.pageDown) {
 			transcriptRef.current?.pageBy(key.pageUp ? -1 : 1);
 			return;

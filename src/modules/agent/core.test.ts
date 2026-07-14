@@ -10,8 +10,16 @@ import {ConfigStore} from '../../libs/config/index.js';
 import type {ExecCommandResult, PtyRunner} from '../../libs/pty/index.js';
 import {SessionCatalog} from '../../libs/session-storage/index.js';
 import {MAX_AGENT_TURNS} from './services/prompt-turn-executor.js';
+import type {LexaRuntime} from '../../libs/lexa/index.js';
 
 const directories: string[] = [];
+
+const lexa: LexaRuntime = {
+	binaryDirectory: '/managed/lexa/bin',
+	binaryPath: '/managed/lexa/bin/lexa',
+	skill: '# Lexa\n\nUse the managed index.',
+	version: '0.10.0',
+};
 
 const model: CompletionModel = {
 	provider: 'fake',
@@ -34,6 +42,7 @@ const runtimeFixture = async (factory: ProviderFactory, ptyRunner?: PtyRunner) =
 	return new AnviaAgentRuntime({
 		configStore: new ConfigStore(join(directory, 'config.toml')),
 		memoryPath: join(directory, 'memory.sqlite'),
+		lexa,
 		projectRoot: directory,
 		sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
 		providerFactory: factory,
@@ -94,6 +103,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		const runtime = new AnviaAgentRuntime({
 			configStore: new ConfigStore(join(directory, 'config.toml')),
 			memoryPath,
+			lexa,
 			projectRoot: directory,
 			sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
 			providerFactory: () => ({model: () => model, listModels: async () => ({data: []})}),

@@ -24,6 +24,7 @@ import {defaultProviderFactory, type ProviderFactory} from '../../libs/provider-
 import {NodePtyRunner, type PtyRunner} from '../../libs/pty/index.js';
 import {ProjectSessionManager} from '../sessions/index.js';
 import {SessionCatalog} from '../../libs/session-storage/index.js';
+import type {LexaRuntime} from '../../libs/lexa/index.js';
 
 export type {ProviderConnection, ProviderFactory} from '../../libs/provider-clients/index.js';
 export {MissingProviderKeyError} from '../providers/index.js';
@@ -31,6 +32,7 @@ export {MissingProviderKeyError} from '../providers/index.js';
 export type AnviaRuntimeOptions = {
 	configStore?: ConfigStore;
 	memoryPath?: string;
+	lexa: LexaRuntime;
 	ptyRunner?: PtyRunner;
 	providerFactory?: ProviderFactory;
 	projectRoot?: string;
@@ -48,7 +50,7 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 	#disposed = false;
 	#running = false;
 
-	constructor(options: AnviaRuntimeOptions = {}) {
+	constructor(options: AnviaRuntimeOptions) {
 		this.#projectRoot = realpathSync(options.projectRoot ?? process.cwd());
 		if (!statSync(this.#projectRoot).isDirectory()) throw new Error('Project root must be a directory.');
 		const memory = createSqliteMemoryStore({
@@ -57,12 +59,13 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 		const sessionCatalog =
 			options.sessionCatalog ?? new SessionCatalog(join(defaultConfigDirectory(), 'sessions.sqlite'));
 		this.#projectSessions = new ProjectSessionManager(this.#projectRoot, sessionCatalog, memory);
-		this.#pty = options.ptyRunner ?? new NodePtyRunner(this.#projectRoot);
+		this.#pty =
+			options.ptyRunner ?? new NodePtyRunner(this.#projectRoot, {pathEntries: [options.lexa.binaryDirectory]});
 		this.#providers = new ProviderConnectionManager(
 			options.configStore ?? new ConfigStore(),
 			options.providerFactory ?? defaultProviderFactory,
 		);
-		this.#promptTurns = new PromptTurnExecutor(this.#projectRoot, memory, this.#pty, this.#files);
+		this.#promptTurns = new PromptTurnExecutor(this.#projectRoot, memory, this.#pty, this.#files, options.lexa);
 		this.#directCommands = new DirectCommandExecutor(this.#projectRoot, memory, this.#pty);
 	}
 
