@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import type {ToolMessage} from '../types.js';
+import stringWidth from 'string-width';
+import type {AssistantMessage, ToolMessage} from '../types.js';
 import {demoMessages} from '../fixtures.js';
 import {messageToRows, messagesToRows, rowText, wrapSegments} from './message-rows.js';
 
@@ -16,7 +17,7 @@ const toolMessage = (status: ToolMessage['status'], lineCount: number): ToolMess
 describe('transcript row model', () => {
 	it('wraps content to terminal width', () => {
 		const lines = wrapSegments([{text: 'alpha beta gamma'}], 10);
-		expect(lines.map((line) => line.map((segment) => segment.text).join(''))).toEqual(['alpha beta ', 'gamma']);
+		expect(lines.map((line) => line.map((segment) => segment.text).join(''))).toEqual(['alpha beta', 'gamma']);
 	});
 
 	it('renders every supported message kind into fixed-height rows', () => {
@@ -28,11 +29,26 @@ describe('transcript row model', () => {
 		expect(rows.some((row) => rowText(row).includes('source/server.ts'))).toBe(true);
 	});
 
-	it('renders markdown code as code-background rows', () => {
+	it('renders fenced code with language-aware segment colors', () => {
 		const message = demoMessages.find((item) => item.id === 'assistant-1');
 		expect(message).toBeDefined();
 		const rows = messageToRows(message!, 60);
-		expect(rows.some((row) => row.background === 'code')).toBe(true);
+		expect(rows.every((row) => row.background !== 'code')).toBe(true);
+		expect(rows.some((row) => row.segments.some((segment) => segment.color))).toBe(true);
+	});
+
+	it('keeps the assistant marker in a fixed gutter on every visual row', () => {
+		const message: AssistantMessage = {
+			id: 'assistant-gutter',
+			kind: 'assistant',
+			variant: 'text',
+			content: '# Heading\n\nA paragraph that wraps across several visual rows at this width.',
+		};
+		const rows = messageToRows(message, 30);
+
+		expect(rowText(rows[0]!)).toMatch(/^● /u);
+		expect(rows.slice(1).every((row) => rowText(row).startsWith('  '))).toBe(true);
+		expect(rows.every((row) => stringWidth(rowText(row)) <= 28)).toBe(true);
 	});
 
 	it('collapses successful tool details to three visual rows with an accurate expansion hint', () => {

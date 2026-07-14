@@ -44,11 +44,13 @@
 		"check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build"
 	},
 	"dependencies": {
+		"@alcalzone/ansi-tokenize": "^0.3.0",
 		"@anvia/anthropic": "^0.3.14",
 		"@anvia/core": "^0.13.0",
 		"@anvia/memory-sqlite": "^0.2.2",
 		"@anvia/openai": "^0.3.17",
 		"@inkjs/ui": "^2.0.0",
+		"cli-highlight": "^2.1.11",
 		"diff": "^9.0.0",
 		"fuse.js": "^7.4.2",
 		"ignore": "^5.3.2",
@@ -60,6 +62,7 @@
 		"smol-toml": "^1.7.0",
 		"string-width": "^8.2.2",
 		"strip-ansi": "^7.1.2",
+		"supports-hyperlinks": "^4.5.0",
 		"zod": "^4.4.3",
 		"zustand": "^5.0.14"
 	},

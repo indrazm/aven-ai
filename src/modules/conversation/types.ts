@@ -57,10 +57,12 @@ export type SelectionState = {
 export type RowSegment = {
 	text: string;
 	tone?: RowTone;
+	color?: string;
 	bold?: boolean;
 	dim?: boolean;
 	italic?: boolean;
 	underline?: boolean;
+	strikethrough?: boolean;
 	selectable?: boolean;
 	link?: string;
 };

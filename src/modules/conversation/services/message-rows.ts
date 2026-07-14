@@ -74,8 +74,11 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 				: message.variant === 'advisor'
 					? [{text: '◇ ', tone: 'permission', selectable: false}]
 					: [{text: '● ', tone: 'accent', selectable: false}];
-		const rows = markdownRows(message, message.content, contentWidth);
-		if (rows[0]) rows[0].segments = [...prefix, ...rows[0].segments];
+		const gutterWidth = stringWidth(prefix[0]?.text ?? '');
+		const rows = markdownRows(message, message.content, Math.max(1, contentWidth - gutterWidth));
+		for (const [index, row] of rows.entries()) {
+			row.segments = [index === 0 ? prefix[0]! : {text: ' '.repeat(gutterWidth), selectable: false}, ...row.segments];
+		}
 		return rows;
 	}
 

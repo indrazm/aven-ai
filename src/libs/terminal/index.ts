@@ -1,4 +1,5 @@
 export {writeOsc52} from './clipboard.js';
+export {safeHyperlinkTarget, supportsTerminalHyperlinks, terminalHyperlink} from './hyperlink.js';
 export {keyboardProtocol} from './keyboard-protocol.js';
 export {
 	DISABLE_MOUSE,
