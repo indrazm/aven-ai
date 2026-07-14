@@ -12,11 +12,11 @@ describe('App provider flows', () => {
 		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		stdin.write('/setup');
+		stdin.write('/connect');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		stdin.write('\r');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(lastFrame()).toContain('Set up provider');
+		expect(lastFrame()).toContain('Connect provider');
 		expect(lastFrame()).toContain('OpenAI');
 
 		stdin.write('\r');
@@ -41,7 +41,7 @@ describe('App provider flows', () => {
 		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
 		await tick();
 
-		stdin.write('/setup');
+		stdin.write('/connect');
 		await tick();
 		stdin.write('\r');
 		await tick();
@@ -73,6 +73,29 @@ describe('App provider flows', () => {
 			baseUrl: 'https://dbc.example.databricks.com/ai-gateway/mlflow/v1',
 		});
 		expect(lastFrame()).toContain('Databricks · test-model');
+		unmount();
+	});
+
+	it('requests replacement credentials when a configured provider cannot connect', async () => {
+		const runtime = new SetupRuntime();
+		runtime.configured = true;
+		runtime.connect = async () => {
+			throw new Error('Authentication failed');
+		};
+		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
+		await tick();
+
+		stdin.write('/connect');
+		await tick();
+		stdin.write('\r');
+		await tick();
+		expect(lastFrame()).toContain('Connect provider');
+
+		stdin.write('\r');
+		await tick();
+		await tick();
+		expect(lastFrame()).toContain('Enter API key');
+		expect(lastFrame()).toContain('OpenAI connection failed. Enter replacement credentials.');
 		unmount();
 	});
 

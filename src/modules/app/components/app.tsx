@@ -83,7 +83,7 @@ export const App = ({
 			kind: 'system',
 			level: 'info',
 			content: isConfigurableRuntime(runtime)
-				? 'Welcome to Aven AI. Use /connect to choose a provider, or /setup to add one.'
+				? 'Welcome to Aven AI. Use /connect to choose or configure a provider.'
 				: 'Welcome to Aven AI. Local mock mode is active.',
 		},
 	];

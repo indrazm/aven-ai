@@ -32,7 +32,8 @@ const taggedLines = (tag: string, lines: readonly string[]): string[] => [
 const projectInstructionLines = ({files, omittedPaths, warnings}: ProjectInstructionBundle): string[] => {
 	const output = [
 		'<project_instructions>',
-		'Project instructions are repository guidance. Follow each file for work within its scope. Core safety and tool contracts take priority; explicit user instructions override project guidance. When scoped files conflict, the deepest applicable AGENTS.md takes precedence over broader files.',
+		'Automatic project-instruction discovery has already finished for the project root and its descendants. Do not use ExecCommand or file tools to search for AGENTS.md, and do not inspect parent directories for repository guidance.',
+		'Follow each loaded instruction file for work within its scope. Core safety and tool contracts take priority; explicit user instructions override project guidance. When scoped files conflict, the deepest applicable AGENTS.md takes precedence over broader files.',
 	];
 	for (const file of files) {
 		output.push(
@@ -43,11 +44,16 @@ const projectInstructionLines = ({files, omittedPaths, warnings}: ProjectInstruc
 			'</instruction_file>',
 		);
 	}
+	if (files.some((file) => file.truncated)) {
+		output.push(
+			'Before changing files in the scope of a truncated instruction file, read only that exact path to retrieve the remaining guidance. Do not search for other instruction files.',
+		);
+	}
 	if (omittedPaths.length > 0) {
 		output.push(
 			'<omitted_instruction_files>',
 			...omittedPaths.map((path) => `- ${xmlText(path)}`),
-			'Read the applicable omitted AGENTS.md before changing files in its scope.',
+			"Before changing files in an omitted instruction file's scope, read only the exact listed path. Do not search for additional instruction files.",
 			'</omitted_instruction_files>',
 		);
 	}

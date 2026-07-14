@@ -150,7 +150,7 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 			}
 			const model = this.#providers.model;
 			if (this.#providers.state.status !== 'connected' || !model) {
-				throw new Error('No provider connected. Run /connect or /setup.');
+				throw new Error('No provider connected. Run /connect.');
 			}
 			yield* this.#promptTurns.run(request, signal, model, sessionId);
 			yield* this.#completeSessionTurn(request.id);

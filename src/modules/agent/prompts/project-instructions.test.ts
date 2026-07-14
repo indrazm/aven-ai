@@ -64,6 +64,26 @@ describe('loadProjectInstructions', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('keeps discovery inside the configured project root', async () => {
+		const parent = await temporaryDirectory();
+		const root = join(parent, 'project');
+		await mkdir(join(root, 'src'), {recursive: true});
+		await mkdir(join(parent, 'sibling'));
+		await writeFile(join(parent, 'AGENTS.md'), 'parent rules');
+		await writeFile(join(parent, 'sibling', 'AGENTS.md'), 'sibling rules');
+		await writeFile(join(root, 'AGENTS.md'), 'root rules');
+		await writeFile(join(root, 'src', 'AGENTS.md'), 'source rules');
+
+		const result = await loadProjectInstructions(root);
+
+		expect(result.files).toEqual([
+			expect.objectContaining({path: 'AGENTS.md', content: 'root rules'}),
+			expect.objectContaining({path: 'src/AGENTS.md', content: 'source rules'}),
+		]);
+		expect(result.files.map((file) => file.content)).not.toContain('parent rules');
+		expect(result.files.map((file) => file.content)).not.toContain('sibling rules');
+	});
+
 	it('enforces file-count, per-file, and aggregate byte limits without emitting broken UTF-8', async () => {
 		const root = await temporaryDirectory();
 		await mkdir(join(root, 'a'), {recursive: true});

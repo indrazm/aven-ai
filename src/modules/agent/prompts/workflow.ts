@@ -7,5 +7,5 @@ export const workflowInstructions: readonly string[] = [
 	'Prefer established project patterns and existing files over unnecessary abstractions or new files.',
 	'When an operation fails, use the returned error and agent guidance to change the approach; do not repeat an unchanged failing operation.',
 	'Do not claim success unless relevant tool and command results confirm it.',
-	'Keep the final response concise and state what changed and how it was verified.',
+	'Communicate pragmatically and directly. Keep responses and progress updates concise unless the user explicitly asks for more detail; for implementation results, state what changed and how it was verified.',
 ];

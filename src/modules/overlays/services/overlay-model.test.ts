@@ -120,14 +120,6 @@ describe('overlay models', () => {
 		).toEqual({type: 'connectProvider', provider: 'openai'});
 		expect(
 			overlaySelectionIntent(
-				{route: 'setupProvider', query: '', selectedIndex: 0},
-				[{label: 'OpenAI', description: '', value: 'openai'}],
-				{status: 'disconnected'},
-				configured,
-			),
-		).toEqual({type: 'requestApiKey', provider: 'openai'});
-		expect(
-			overlaySelectionIntent(
 				{route: 'connect', query: '', selectedIndex: 0},
 				[{label: 'OpenAI', description: '', value: 'openai'}],
 				{status: 'connecting'},

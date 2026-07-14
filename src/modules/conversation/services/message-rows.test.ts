@@ -92,6 +92,28 @@ describe('transcript row model', () => {
 		expect(rows.map((row) => rowText(row))).toEqual(['✓ Read  /workspace/one.ts', '✓ Read  /workspace/two.ts']);
 	});
 
+	it('adds one blank row above and below command activity', () => {
+		const read = (id: string): ToolMessage => ({
+			id,
+			kind: 'tool',
+			name: 'Read',
+			status: 'success',
+			summary: `/workspace/${id}.ts`,
+			group: 'read',
+		});
+		const command = {...toolMessage('success', 0), id: 'command'};
+
+		const rows = messagesToRows([read('before'), command, read('after')], 80);
+
+		expect(rows.map((row) => rowText(row))).toEqual([
+			'✓ Read  /workspace/before.ts',
+			'',
+			'✓ ExecCommand  print output',
+			'',
+			'✓ Read  /workspace/after.ts',
+		]);
+	});
+
 	it('shows file activity relative to the active project', () => {
 		const message: ToolMessage = {
 			id: 'project-file',

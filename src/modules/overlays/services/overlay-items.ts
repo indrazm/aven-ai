@@ -36,7 +36,7 @@ export const buildOverlayItems = (
 			value: session.id,
 		}));
 	}
-	if (overlay.route === 'connect' || overlay.route === 'setupProvider') {
+	if (overlay.route === 'connect') {
 		return context.connection.providers.map((provider) => ({
 			label: provider.label,
 			description: provider.active
@@ -49,7 +49,7 @@ export const buildOverlayItems = (
 	}
 	if (overlay.route === 'model') {
 		if (context.connection.state.status !== 'connected') {
-			return [{label: 'Not connected', description: 'Run /connect or /setup'}];
+			return [{label: 'Not connected', description: 'Run /connect'}];
 		}
 		return context.connection.models.map((model) => ({
 			label: model.id,

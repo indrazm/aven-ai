@@ -61,7 +61,7 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 			const actions = store.getState();
 			actions.setOverlay({route, query: '', selectedIndex: 0});
 			actions.setTranscriptMode(false);
-			if (route === 'connect' || route === 'setupProvider') void connection.refreshProviders();
+			if (route === 'connect') void connection.refreshProviders();
 			if (route === 'model') void connection.refreshModels();
 			if (route === 'sessions') void workspace.refresh();
 		},
@@ -138,16 +138,23 @@ export const useOverlayController = (connection: RuntimeConnection, workspace: R
 						selectedIndex: 0,
 					});
 				} else if (intent.type === 'connectProvider') {
+					const provider = intent.provider;
 					void connection
-						.connect(intent.provider)
+						.connect(provider)
 						.then((connected) => {
 							store.getState().setOverlay(null);
 							appendConnectionMessage('success', `Connected to ${connected.providerLabel} · ${connected.model}`);
 						})
 						.catch(() => {
+							store.getState().setOverlay({
+								route: providers[provider].baseUrl ? 'setupBaseUrl' : 'setupKey',
+								provider,
+								query: '',
+								selectedIndex: 0,
+							});
 							appendConnectionMessage(
 								'error',
-								`${providers[intent.provider].label} connection failed. Run /setup to replace its API key.`,
+								`${providers[provider].label} connection failed. Enter replacement credentials.`,
 							);
 						});
 				} else if (intent.type === 'selectModel') {

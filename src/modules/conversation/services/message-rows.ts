@@ -153,6 +153,9 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 };
 
 export const shouldSeparateMessages = (previous: UiMessage, current: UiMessage): boolean => {
+	const previousIsCommand = previous.kind === 'tool' && previous.name === 'ExecCommand';
+	const currentIsCommand = current.kind === 'tool' && current.name === 'ExecCommand';
+	if (previousIsCommand || currentIsCommand) return true;
 	const previousIsActivity = previous.kind === 'tool' || previous.kind === 'diff';
 	const currentIsActivity = current.kind === 'tool' || current.kind === 'diff';
 	return !(previousIsActivity && currentIsActivity);

@@ -32,7 +32,7 @@ describe('buildSystemPrompt', () => {
 				'- Prefer established project patterns and existing files over unnecessary abstractions or new files.',
 				'- When an operation fails, use the returned error and agent guidance to change the approach; do not repeat an unchanged failing operation.',
 				'- Do not claim success unless relevant tool and command results confirm it.',
-				'- Keep the final response concise and state what changed and how it was verified.',
+				'- Communicate pragmatically and directly. Keep responses and progress updates concise unless the user explicitly asks for more detail; for implementation results, state what changed and how it was verified.',
 				'</working_principles>',
 				'',
 				'<file_tool_rules>',
@@ -57,7 +57,8 @@ describe('buildSystemPrompt', () => {
 				'</lexa>',
 				'',
 				'<project_instructions>',
-				'Project instructions are repository guidance. Follow each file for work within its scope. Core safety and tool contracts take priority; explicit user instructions override project guidance. When scoped files conflict, the deepest applicable AGENTS.md takes precedence over broader files.',
+				'Automatic project-instruction discovery has already finished for the project root and its descendants. Do not use ExecCommand or file tools to search for AGENTS.md, and do not inspect parent directories for repository guidance.',
+				'Follow each loaded instruction file for work within its scope. Core safety and tool contracts take priority; explicit user instructions override project guidance. When scoped files conflict, the deepest applicable AGENTS.md takes precedence over broader files.',
 				'</project_instructions>',
 			].join('\n'),
 		);
@@ -88,7 +89,9 @@ describe('buildSystemPrompt', () => {
 		expect(prompt).toContain('Never emit ]]]]><![CDATA[> literally.');
 		expect(prompt).toContain('<instruction_file path="src/AGENTS.md" scope="src" truncated="true">');
 		expect(prompt).toContain('Do not emit ]]]]><![CDATA[> literally.');
+		expect(prompt).toContain('read only that exact path to retrieve the remaining guidance');
 		expect(prompt).toContain('- packages/ui/AGENTS.md');
+		expect(prompt).toContain('read only the exact listed path');
 		expect(prompt).toContain('Could not read private/&lt;rules&gt;.');
 		expect(prompt.indexOf('<lexa ')).toBeLessThan(prompt.indexOf('<project_instructions>'));
 	});
