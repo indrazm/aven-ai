@@ -6,7 +6,6 @@ import type {OverlayItem, OverlayState} from '../types.js';
 
 export type OverlayItemContext = {
 	messages: readonly UiMessage[];
-	promptHistory: readonly string[];
 	connection: {
 		state: ConnectionState;
 		providers: readonly ProviderStatus[];
@@ -24,9 +23,6 @@ export const buildOverlayItems = (
 	context: OverlayItemContext,
 ): readonly OverlayItem[] => {
 	if (!overlay) return [];
-	if (overlay.route === 'history') {
-		return context.promptHistory.map((label) => ({label, description: 'local prompt'}));
-	}
 	if (overlay.route === 'sessions') {
 		if (!context.workspace.supported) {
 			return [{label: 'Unavailable', description: 'Runtime does not support project sessions'}];

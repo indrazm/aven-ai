@@ -51,7 +51,7 @@ describe('application store runtime events', () => {
 		});
 		store.getState().enqueueRequest({id: 'queued', content: 'queued prompt', mode: 'prompt'});
 		store.getState().setEditor({value: 'draft', cursor: 5});
-		store.getState().setOverlay({route: 'history', query: 'old', selectedIndex: 0});
+		store.getState().setOverlay({route: 'search', query: 'old', selectedIndex: 0});
 		store.getState().setTranscriptMode(true);
 
 		store.getState().resetSession([{id: 'restored', kind: 'user', variant: 'prompt', content: 'restored'}]);

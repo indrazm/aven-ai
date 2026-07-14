@@ -9,3 +9,7 @@ allowBuilds:
   node-pty: true
 minimumReleaseAgeExclude:
   - '@anvia/openai@0.3.17'
+  - lexa-index-darwin-arm64@0.10.0
+  - lexa-index-darwin-x64@0.10.0
+  - lexa-index-linux-x64@0.10.0
+  - lexa-index@0.10.0

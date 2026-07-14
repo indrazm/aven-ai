@@ -3,7 +3,6 @@ import {commandItems} from '../../commands/index.js';
 
 export const overlayTitle: Record<OverlayRoute, string> = {
 	help: 'Help',
-	history: 'Prompt history',
 	sessions: 'Project sessions',
 	commands: 'Commands',
 	connect: 'Connect provider',
@@ -20,13 +19,11 @@ const items: Record<OverlayRoute, readonly OverlayItem[]> = {
 		{label: 'Enter', description: 'submit prompt'},
 		{label: 'Shift/Alt+Enter', description: 'insert newline'},
 		{label: 'Ctrl+O', description: 'toggle transcript navigation and expand tool output'},
-		{label: 'Ctrl+R', description: 'search prompt history'},
 		{label: 'Ctrl+C', description: 'interrupt; press twice while idle to exit'},
 		{label: 'Ctrl+D', description: 'press twice on empty input to exit'},
 		{label: '! on empty input', description: 'enter direct PTY command mode'},
 		{label: 'Mouse', description: 'wheel scroll; drag/double/triple click selects'},
 	],
-	history: [],
 	sessions: [],
 	connect: [],
 	setupProvider: [],

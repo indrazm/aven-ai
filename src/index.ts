@@ -1,4 +1,10 @@
 #!/usr/bin/env node
-import {runCli} from './modules/app/index.js';
+import process from 'node:process';
+import {formatCliError, runCli} from './modules/app/index.js';
 
-await runCli();
+try {
+	await runCli();
+} catch (error) {
+	process.stderr.write(formatCliError(error));
+	process.exitCode = 1;
+}

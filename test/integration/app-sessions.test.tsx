@@ -8,6 +8,7 @@ describe('App project-session flows', () => {
 		const runtime = new SessionRuntime();
 		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
 		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(lastFrame()).toContain('/workspace/alpha');
 
 		stdin.write('/resume-last');
 		await new Promise((resolve) => setTimeout(resolve, 0));

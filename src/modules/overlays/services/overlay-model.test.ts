@@ -4,7 +4,6 @@ import {overlaySelectionIntent} from './overlay-selection.js';
 
 const context: OverlayItemContext = {
 	messages: [],
-	promptHistory: ['newest prompt'],
 	connection: {
 		state: {status: 'disconnected'},
 		providers: [{id: 'openai', label: 'OpenAI', model: 'gpt-5', configured: false, active: false}],
@@ -15,9 +14,6 @@ const context: OverlayItemContext = {
 
 describe('overlay models', () => {
 	it('builds route-specific items without React state', () => {
-		expect(buildOverlayItems({route: 'history', query: '', selectedIndex: 0}, context)).toEqual([
-			{label: 'newest prompt', description: 'local prompt'},
-		]);
 		expect(buildOverlayItems({route: 'sessions', query: '', selectedIndex: 0}, context)[0]?.label).toBe('Unavailable');
 		expect(buildOverlayItems({route: 'connect', query: '', selectedIndex: 0}, context)[0]?.description).toContain(
 			'credentials required',
@@ -31,7 +27,6 @@ describe('overlay models', () => {
 				{id: 'diff', kind: 'diff', file: '/tmp/a', before: 'a', after: 'b'},
 				{id: 'system', kind: 'system', level: 'info', content: 'first\nsecond'},
 			],
-			promptHistory: [],
 			connection: {
 				state: {status: 'connected', provider: 'openai', providerLabel: 'OpenAI', model: 'gpt-5'},
 				providers: [{id: 'openai', label: 'OpenAI', model: 'gpt-5', configured: true, active: true}],
@@ -70,6 +65,9 @@ describe('overlay models', () => {
 			buildOverlayItems({route: 'search', query: '', selectedIndex: 0}, connected).map((item) => item.label),
 		).toEqual(['Read: /tmp/a', '/tmp/a', 'first']);
 		expect(buildOverlayItems({route: 'help', query: '', selectedIndex: 0}, connected).length).toBeGreaterThan(0);
+		expect(buildOverlayItems({route: 'help', query: '', selectedIndex: 0}, connected)).not.toContainEqual(
+			expect.objectContaining({label: 'Ctrl+R'}),
+		);
 		expect(
 			buildOverlayItems(
 				{route: 'sessions', query: '', selectedIndex: 0},
@@ -103,14 +101,6 @@ describe('overlay models', () => {
 	});
 
 	it('resolves every actionable route and safely handles unavailable selections', () => {
-		expect(
-			overlaySelectionIntent(
-				{route: 'history', query: '', selectedIndex: 0},
-				[{label: 'prompt', description: ''}],
-				{status: 'disconnected'},
-				[],
-			),
-		).toEqual({type: 'restorePrompt', value: 'prompt'});
 		expect(
 			overlaySelectionIntent(
 				{route: 'sessions', query: '', selectedIndex: 0},

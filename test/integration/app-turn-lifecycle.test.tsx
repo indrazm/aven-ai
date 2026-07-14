@@ -64,7 +64,8 @@ describe('App turn lifecycle', () => {
 		runtime.releaseFirst();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(lastFrame()).not.toContain('Stale response.');
-		expect(lastFrame()).toContain('Thinking');
+		expect(lastFrame()).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u);
+		expect(lastFrame()).toContain('Mock · local');
 
 		runtime.releaseSecond();
 		await new Promise((resolve) => setTimeout(resolve, 0));

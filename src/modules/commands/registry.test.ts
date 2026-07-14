@@ -7,6 +7,8 @@ describe('command registry', () => {
 		expect(overlayItems('commands')).toEqual(commandItems);
 		for (const command of commandItems) expect(routeForCommand(command.label)).toBe(command.route);
 		expect(commandItems.map((command) => command.label)).toContain('/commands');
+		expect(commandItems.map((command) => command.label)).not.toContain('/history');
+		expect(routeForCommand('/history')).toBeUndefined();
 		expect(routeForCommand('/resume')).toBe('sessions');
 		expect(routeForCommand('/sessions')).toBeUndefined();
 		expect(actionForCommand('/new')).toBe('newSession');

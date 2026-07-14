@@ -2,15 +2,24 @@ import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {AssistantContent, Message, Usage, type CompletionModel} from '@anvia/core';
+import {AssistantContent, Message, Usage, type CompletionModel, type CompletionRequest} from '@anvia/core';
 import {createSqliteMemoryStore} from '@anvia/memory-sqlite';
 import {createAppStore} from '../app/index.js';
 import {AnviaAgentRuntime, type ProviderFactory} from './core.js';
 import {ConfigStore} from '../../libs/config/index.js';
 import type {ExecCommandResult, PtyRunner} from '../../libs/pty/index.js';
 import {SessionCatalog} from '../../libs/session-storage/index.js';
+import {MAX_AGENT_TURNS} from './services/prompt-turn-executor.js';
+import type {LexaRuntime} from '../../libs/lexa/index.js';
 
 const directories: string[] = [];
+
+const lexa: LexaRuntime = {
+	binaryDirectory: '/managed/lexa/bin',
+	binaryPath: '/managed/lexa/bin/lexa',
+	skill: '# Lexa\n\nUse the managed index.',
+	version: '0.10.0',
+};
 
 const model: CompletionModel = {
 	provider: 'fake',
@@ -33,6 +42,7 @@ const runtimeFixture = async (factory: ProviderFactory, ptyRunner?: PtyRunner) =
 	return new AnviaAgentRuntime({
 		configStore: new ConfigStore(join(directory, 'config.toml')),
 		memoryPath: join(directory, 'memory.sqlite'),
+		lexa,
 		projectRoot: directory,
 		sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
 		providerFactory: factory,
@@ -93,6 +103,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		const runtime = new AnviaAgentRuntime({
 			configStore: new ConfigStore(join(directory, 'config.toml')),
 			memoryPath,
+			lexa,
 			projectRoot: directory,
 			sessionCatalog: new SessionCatalog(join(directory, 'sessions.sqlite')),
 			providerFactory: () => ({model: () => model, listModels: async () => ({data: []})}),
@@ -268,6 +279,220 @@ describe('AnviaAgentRuntime configuration', () => {
 				expect.objectContaining({kind: 'assistant', content: 'Workspace inspected.'}),
 			]),
 		);
+		runtime.dispose();
+	});
+
+	it('can complete a tool-driven task that requires more than eight model turns', async () => {
+		expect(MAX_AGENT_TURNS).toBe(50);
+		let modelTurn = 0;
+		const streamingModel = {
+			...model,
+			capabilities: {...model.capabilities, streaming: true},
+			async *streamCompletion() {
+				modelTurn += 1;
+				const choice =
+					modelTurn <= 9
+						? [AssistantContent.toolCall(`call-${modelTurn}`, 'ExecCommand', {command: `step-${modelTurn}`})]
+						: [AssistantContent.text('All nine steps completed.')];
+				yield {type: 'final' as const, response: {choice, usage: Usage.empty()}};
+			},
+		} as CompletionModel & {streamCompletion: () => AsyncIterable<unknown>};
+		const ptyRunner: PtyRunner = {
+			run: vi.fn(async (command) => ({
+				command,
+				cwd: '/workspace',
+				exitCode: 0,
+				signal: null,
+				timedOut: false,
+				truncated: false,
+				output: command,
+			})),
+			dispose: vi.fn(),
+		};
+		const runtime = await runtimeFixture(
+			() => ({model: () => streamingModel, listModels: async () => ({data: [{id: 'gpt-5'}]})}),
+			ptyRunner,
+		);
+		await runtime.setup('openai', {apiKey: 'test-key'});
+		const events = [];
+		for await (const event of runtime.run(
+			{id: 'long-prompt', content: 'Complete all nine steps', mode: 'prompt'},
+			new AbortController().signal,
+		)) {
+			events.push(event);
+		}
+
+		expect(modelTurn).toBe(10);
+		expect(ptyRunner.run).toHaveBeenCalledTimes(9);
+		expect(events.at(-1)).toEqual({type: 'turn.completed', turnId: 'long-prompt'});
+		expect(events).toContainEqual({
+			type: 'assistant.delta',
+			messageId: 'assistant-long-prompt-turn-10',
+			delta: 'All nine steps completed.',
+		});
+		runtime.dispose();
+	});
+
+	it('reloads hierarchical project instructions for every prompt run', async () => {
+		const instructions: string[] = [];
+		const streamingModel = {
+			...model,
+			capabilities: {...model.capabilities, streaming: true},
+			async *streamCompletion(request: CompletionRequest) {
+				instructions.push(request.instructions ?? '');
+				yield {
+					type: 'final' as const,
+					response: {choice: [AssistantContent.text('Done.')], usage: Usage.empty()},
+				};
+			},
+		} as CompletionModel & {streamCompletion: (request: CompletionRequest) => AsyncIterable<unknown>};
+		const runtime = await runtimeFixture(() => ({
+			model: () => streamingModel,
+			listModels: async () => ({data: [{id: 'gpt-5'}]}),
+		}));
+		await runtime.setup('openai', {apiKey: 'test-key'});
+		const rulesPath = join(runtime.getProjectRoot(), 'AGENTS.md');
+		await writeFile(rulesPath, 'FIRST_RULE_VERSION');
+		for await (const _event of runtime.run(
+			{id: 'rules-one', content: 'First prompt', mode: 'prompt'},
+			new AbortController().signal,
+		)) {
+			// Consume the first prompt.
+		}
+		await writeFile(rulesPath, 'SECOND_RULE_VERSION');
+		for await (const _event of runtime.run(
+			{id: 'rules-two', content: 'Second prompt', mode: 'prompt'},
+			new AbortController().signal,
+		)) {
+			// Consume the second prompt.
+		}
+
+		expect(instructions).toHaveLength(2);
+		expect(instructions[0]).toContain('FIRST_RULE_VERSION');
+		expect(instructions[1]).toContain('SECOND_RULE_VERSION');
+		expect(instructions[1]).not.toContain('FIRST_RULE_VERSION');
+		runtime.dispose();
+	});
+
+	it('emits the fifth consecutive tool failure before stopping the run', async () => {
+		let modelTurn = 0;
+		const streamingModel = {
+			...model,
+			capabilities: {...model.capabilities, streaming: true},
+			async *streamCompletion() {
+				modelTurn += 1;
+				yield {
+					type: 'final' as const,
+					response: {
+						choice: [
+							AssistantContent.toolCall(`failure-${modelTurn}`, 'ExecCommand', {
+								command: `fail-${modelTurn}`,
+							}),
+						],
+						usage: Usage.empty(),
+					},
+				};
+			},
+		} as CompletionModel & {streamCompletion: () => AsyncIterable<unknown>};
+		const ptyRunner: PtyRunner = {
+			run: vi.fn(async (command) => ({
+				command,
+				cwd: '/workspace',
+				exitCode: 1,
+				signal: null,
+				timedOut: false,
+				truncated: false,
+				output: 'failed',
+			})),
+			dispose: vi.fn(),
+		};
+		const runtime = await runtimeFixture(
+			() => ({model: () => streamingModel, listModels: async () => ({data: [{id: 'gpt-5'}]})}),
+			ptyRunner,
+		);
+		await runtime.setup('openai', {apiKey: 'test-key'});
+		const events = [];
+		let failure: unknown;
+		try {
+			for await (const event of runtime.run(
+				{id: 'failing-prompt', content: 'Keep trying', mode: 'prompt'},
+				new AbortController().signal,
+			)) {
+				events.push(event);
+			}
+		} catch (error) {
+			failure = error;
+		}
+
+		const visibleFailures = events.filter(
+			(event) => event.type === 'message.replaced' && event.message.kind === 'tool' && event.message.status === 'error',
+		);
+		expect(modelTurn).toBe(5);
+		expect(ptyRunner.run).toHaveBeenCalledTimes(5);
+		expect(visibleFailures).toHaveLength(5);
+		expect(JSON.stringify(events)).not.toContain('agent_guidance');
+		expect(failure).toBeInstanceOf(Error);
+		expect((failure as Error).message).toContain('ExecCommand failed 5 consecutive times.');
+		runtime.dispose();
+	});
+
+	it('skips a third repeated tool call and stops after the fifth repetition', async () => {
+		let modelTurn = 0;
+		const streamingModel = {
+			...model,
+			capabilities: {...model.capabilities, streaming: true},
+			async *streamCompletion() {
+				modelTurn += 1;
+				yield {
+					type: 'final' as const,
+					response: {
+						choice: [AssistantContent.toolCall(`repeat-${modelTurn}`, 'ExecCommand', {command: 'pwd'})],
+						usage: Usage.empty(),
+					},
+				};
+			},
+		} as CompletionModel & {streamCompletion: () => AsyncIterable<unknown>};
+		const ptyRunner: PtyRunner = {
+			run: vi.fn(async (command) => ({
+				command,
+				cwd: '/workspace',
+				exitCode: 0,
+				signal: null,
+				timedOut: false,
+				truncated: false,
+				output: '/workspace',
+			})),
+			dispose: vi.fn(),
+		};
+		const runtime = await runtimeFixture(
+			() => ({model: () => streamingModel, listModels: async () => ({data: [{id: 'gpt-5'}]})}),
+			ptyRunner,
+		);
+		await runtime.setup('openai', {apiKey: 'test-key'});
+		const events = [];
+		let failure: unknown;
+		try {
+			for await (const event of runtime.run(
+				{id: 'repeating-prompt', content: 'Repeat forever', mode: 'prompt'},
+				new AbortController().signal,
+			)) {
+				events.push(event);
+			}
+		} catch (error) {
+			failure = error;
+		}
+
+		const skippedResults = events.filter(
+			(event) =>
+				event.type === 'message.replaced' &&
+				event.message.kind === 'tool' &&
+				event.message.detail?.includes('repeating tool-call pattern') === true,
+		);
+		expect(modelTurn).toBe(5);
+		expect(ptyRunner.run).toHaveBeenCalledTimes(2);
+		expect(skippedResults).toHaveLength(3);
+		expect(failure).toBeInstanceOf(Error);
+		expect((failure as Error).message).toContain('repeating tool-call pattern occurred 5 times');
 		runtime.dispose();
 	});
 
