@@ -165,10 +165,64 @@ describe('runtime file-tool event adaptation', () => {
 
 		expect(takeMutation).toHaveBeenCalledWith('operation');
 		expect(events.map((event) => event.type)).toEqual(['message.replaced', 'message.appended', 'status.changed']);
-		expect(events[1]).toEqual({
-			type: 'message.appended',
-			message: {id: 'diff-tool-request-1-edit-1', kind: 'diff', file: path, before: 'old', after: 'new'},
-		});
+		expect(events[0]).toEqual(
+			expect.objectContaining({
+				type: 'message.replaced',
+				message: expect.not.objectContaining({detail: expect.anything()}),
+			}),
+		);
+		expect(events[1]).toEqual(
+			expect.objectContaining({
+				type: 'message.appended',
+				message: expect.objectContaining({
+					id: 'diff-tool-request-1-edit-1',
+					kind: 'diff',
+					file: path,
+					tool: 'Edit',
+					presentation: 'patch',
+					additions: 1,
+					deletions: 1,
+					hunks: [expect.objectContaining({lines: expect.arrayContaining(['-old', '+new'])})],
+				}),
+			}),
+		);
+		expect(events[1]).not.toHaveProperty('message.before');
+		expect(events[1]).not.toHaveProperty('message.after');
+	});
+
+	it('uses a collapsible syntax preview for newly written files', () => {
+		const queue: PendingToolCall[] = [];
+		const path = '/workspace/file.ts';
+		const content = Array.from({length: 12}, (_, index) => `const value${index + 1} = ${index + 1};`).join('\n');
+		eventToRuntimeEvents(toolCallEvent('write-1', 'Write', {file_path: path}), 'request', 'assistant', queue, '');
+		const events = eventToRuntimeEvents(
+			toolResultEvent('write-1', 'Write', {
+				status: 'success',
+				tool: 'Write',
+				file_path: path,
+				operation: 'create',
+				operation_id: 'operation',
+				message: 'Created file.',
+			}),
+			'request',
+			'assistant',
+			queue,
+			'',
+			{takeMutation: () => ({file: path, before: '', after: content})},
+		);
+
+		expect(events[1]).toEqual(
+			expect.objectContaining({
+				type: 'message.appended',
+				message: expect.objectContaining({
+					tool: 'Write',
+					presentation: 'create',
+					content,
+					additions: 12,
+					hunks: [],
+				}),
+			}),
+		);
 	});
 
 	it('restores successful file-tool entries with the correct group from memory', () => {

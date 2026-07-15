@@ -1,7 +1,7 @@
-import {diffLines} from 'diff';
 import {isAbsolute, relative} from 'node:path';
 import stringWidth from 'string-width';
 import type {ToolMessage, UiMessage} from '../types.js';
+import {diffMessageToRows} from './diff-rows.js';
 import {markdownRows} from './markdown-rows.js';
 import {makeRow} from './row-model.js';
 import type {RowSegment, TranscriptRow} from '../types.js';
@@ -40,11 +40,12 @@ const toolSummaryRow = (message: Extract<UiMessage, {kind: 'tool'}>, contentWidt
 					: 'tool';
 	const segments: RowSegment[] = [
 		{
-			text: `${TOOL_STATUS_MARKER[message.status]} ${message.name}`,
+			text: `${TOOL_STATUS_MARKER[message.status]} `,
 			tone: statusTone,
 			bold: true,
 			selectable: false,
 		},
+		{text: message.name, tone: 'tool', bold: true, selectable: false},
 		{text: '  ', selectable: false},
 		{text: displayToolSummary(message), tone: 'muted'},
 	];
@@ -129,25 +130,7 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 	}
 
 	if (message.kind === 'diff') {
-		const rows = [makeRow(message, 0, [{text: ` ${message.file} `, tone: 'muted', bold: true}], 'code')];
-		let index = 1;
-		for (const part of diffLines(message.before, message.after)) {
-			const prefix = part.added ? '+' : part.removed ? '-' : ' ';
-			const tone = part.added ? 'addition' : part.removed ? 'deletion' : 'muted';
-			for (const line of part.value.replace(/\n$/u, '').split('\n'))
-				rows.push(
-					makeRow(
-						message,
-						index++,
-						[
-							{text: `${prefix} `, tone, selectable: false},
-							{text: line, tone},
-						],
-						'code',
-					),
-				);
-		}
-		return rows;
+		return diffMessageToRows(message, contentWidth, expanded);
 	}
 
 	const marker =
@@ -163,9 +146,6 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 };
 
 export const shouldSeparateMessages = (previous: UiMessage, current: UiMessage): boolean => {
-	const previousIsCommand = previous.kind === 'tool' && previous.name === 'ExecCommand';
-	const currentIsCommand = current.kind === 'tool' && current.name === 'ExecCommand';
-	if (previousIsCommand || currentIsCommand) return false;
 	const previousIsActivity = previous.kind === 'tool' || previous.kind === 'diff';
 	const currentIsActivity = current.kind === 'tool' || current.kind === 'diff';
 	return !(previousIsActivity && currentIsActivity);

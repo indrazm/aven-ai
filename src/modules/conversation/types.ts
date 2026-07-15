@@ -36,12 +36,34 @@ export type SystemMessage = MessageBase & {
 	content: string;
 };
 
-export type DiffMessage = MessageBase & {
+export type DiffHunk = {
+	oldStart: number;
+	oldLines: number;
+	newStart: number;
+	newLines: number;
+	lines: string[];
+};
+
+type DiffMessageBase = MessageBase & {
 	kind: 'diff';
 	file: string;
-	before: string;
-	after: string;
+	hunks: DiffHunk[];
+	additions: number;
+	deletions: number;
+	firstLine?: string;
+	unavailable?: boolean;
 };
+
+export type DiffMessage =
+	| (DiffMessageBase & {
+			tool: 'Edit' | 'Write';
+			presentation: 'patch';
+	  })
+	| (DiffMessageBase & {
+			tool: 'Write';
+			presentation: 'create';
+			content: string;
+	  });
 
 export type UiMessage = UserMessage | AssistantMessage | ToolMessage | SystemMessage | DiffMessage;
 
@@ -65,6 +87,7 @@ export type RowSegment = {
 	strikethrough?: boolean;
 	selectable?: boolean;
 	link?: string;
+	background?: 'addition' | 'deletion';
 };
 
 export type TranscriptRow = {
@@ -72,7 +95,7 @@ export type TranscriptRow = {
 	messageId: string;
 	messageKind: UiMessage['kind'];
 	segments: RowSegment[];
-	background?: 'user' | 'code' | 'selected';
+	background?: 'user' | 'code' | 'selected' | 'addition' | 'deletion';
 	softWrap?: boolean;
 };
 

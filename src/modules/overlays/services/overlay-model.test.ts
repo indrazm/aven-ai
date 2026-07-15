@@ -24,7 +24,16 @@ describe('overlay models', () => {
 		const connected: OverlayItemContext = {
 			messages: [
 				{id: 'tool', kind: 'tool', name: 'Read', status: 'success', summary: '/tmp/a', group: 'read'},
-				{id: 'diff', kind: 'diff', file: '/tmp/a', before: 'a', after: 'b'},
+				{
+					id: 'diff',
+					kind: 'diff',
+					file: '/tmp/a',
+					tool: 'Edit',
+					presentation: 'patch',
+					hunks: [{oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ['-a', '+b']}],
+					additions: 1,
+					deletions: 1,
+				},
 				{id: 'system', kind: 'system', level: 'info', content: 'first\nsecond'},
 			],
 			connection: {

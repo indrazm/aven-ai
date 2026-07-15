@@ -26,7 +26,7 @@ describe('transcript row model', () => {
 		expect(new Set(rows.map((row) => row.messageKind))).toEqual(
 			new Set(['user', 'assistant', 'tool', 'system', 'diff']),
 		);
-		expect(rows.some((row) => rowText(row).includes('source/server.ts'))).toBe(true);
+		expect(rows.some((row) => rowText(row).includes('Added 1 line, removed 1 line'))).toBe(true);
 	});
 
 	it('renders fenced code with language-aware segment colors', () => {
@@ -53,7 +53,11 @@ describe('transcript row model', () => {
 
 	it('hides successful command output by default and reveals it on expansion', () => {
 		const message = toolMessage('success', 8);
-		expect(messageToRows(message, 80).map((row) => rowText(row))).toEqual(['✓ ExecCommand  print output']);
+		const collapsed = messageToRows(message, 80);
+		expect(collapsed.map((row) => rowText(row))).toEqual(['✓ ExecCommand  print output']);
+		expect(collapsed[0]?.segments).toEqual(
+			expect.arrayContaining([expect.objectContaining({text: 'ExecCommand', tone: 'tool', bold: true})]),
+		);
 
 		const expanded = messageToRows(message, 80, true);
 		expect(expanded.map((row) => rowText(row))).toEqual([
@@ -145,7 +149,7 @@ describe('transcript row model', () => {
 		expect(rows.map((row) => rowText(row))).toEqual(['✓ Read  /workspace/one.ts', '✓ Read  /workspace/two.ts']);
 	});
 
-	it('does not add blank rows above or below command activity', () => {
+	it('separates assistant text from command activity while keeping tool calls together', () => {
 		const read = (id: string): ToolMessage => ({
 			id,
 			kind: 'tool',
@@ -155,11 +159,18 @@ describe('transcript row model', () => {
 			group: 'read',
 		});
 		const command = {...toolMessage('success', 0), id: 'command'};
+		const text: AssistantMessage = {
+			id: 'assistant-before-tools',
+			kind: 'assistant',
+			variant: 'text',
+			content: 'I will inspect the project.',
+		};
 
-		const rows = messagesToRows([read('before'), command, read('after')], 80);
+		const rows = messagesToRows([text, command, read('after')], 80);
 
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'✓ Read  /workspace/before.ts',
+			'● I will inspect the project.',
+			'',
 			'✓ ExecCommand  print output',
 			'✓ Read  /workspace/after.ts',
 		]);

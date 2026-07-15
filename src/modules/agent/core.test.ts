@@ -565,10 +565,20 @@ describe('AnviaAgentRuntime configuration', () => {
 				message: expect.objectContaining({name: 'Edit', status: 'success', group: 'edit'}),
 			}),
 		);
-		expect(events).toContainEqual({
-			type: 'message.appended',
-			message: {id: 'diff-tool-file-prompt-2-edit-1', kind: 'diff', file: path, before: 'before\n', after: 'after\n'},
-		});
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: 'message.appended',
+				message: expect.objectContaining({
+					id: 'diff-tool-file-prompt-2-edit-1',
+					kind: 'diff',
+					file: path,
+					presentation: 'patch',
+					additions: 1,
+					deletions: 1,
+					hunks: [expect.objectContaining({lines: ['-before', '+after']})],
+				}),
+			}),
+		);
 		expect(await readFile(path, 'utf8')).toBe('after\n');
 		expect(await runtime.loadHistory()).toEqual(
 			expect.arrayContaining([

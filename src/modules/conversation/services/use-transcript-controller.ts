@@ -88,9 +88,10 @@ export const useTranscriptController = (
 			const value = selectedText(rows, next);
 			if (!value) return false;
 			copyText(value);
+			commitSelection(null);
 			return true;
 		},
-		[copyText, rows],
+		[commitSelection, copyText, rows],
 	);
 
 	const copySelection = useCallback(() => {
