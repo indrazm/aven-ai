@@ -1,6 +1,6 @@
 {
 	"name": "aven-ai",
-	"version": "0.0.3",
+	"version": "0.1.0",
 	"description": "A full-screen, multi-provider Anvia coding agent terminal with PTY tools.",
 	"type": "module",
 	"repository": {

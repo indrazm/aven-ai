@@ -1,5 +1,15 @@
 # aven-ai
 
+## 0.1.0
+
+### Minor Changes
+
+- af486e0: Add fuzzy `@` mentions for non-ignored project files and folders, with structured path references for agent prompts. Consolidate provider setup into `/connect`, remove the redundant `/commands` command, prevent agents from rediscovering automatically loaded project instructions, keep agent communication pragmatic and concise by default, and add vertical spacing around command execution rows.
+
+### Patch Changes
+
+- e47bda7: Document Lexa reverse-dependency syntax, make all tools consistently project-root-aware, execute up to eight tool calls concurrently, render command activity without surrounding gaps, hide command output until transcript expansion, truncate tool previews to one line, automatically copy completed transcript selections, and keep unrelated command failures from sharing the same recovery streak while retaining a global circuit breaker.
+
 ## 0.0.3
 
 ### Patch Changes
