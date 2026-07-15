@@ -1,6 +1,6 @@
 import {Box, Text} from 'ink';
 import stringWidth from 'string-width';
-import {theme, toneColor} from '../../../libs/terminal/index.js';
+import {terminalHyperlink, theme, toneColor} from '../../../libs/terminal/index.js';
 import {rowText} from '../services/row-model.js';
 import {selectionColumnsForRow, splitSegmentsForSelection} from '../services/selection.js';
 import type {SelectionState, TranscriptRow as TranscriptRowModel} from '../types.js';
@@ -24,14 +24,15 @@ export const TranscriptRow = ({row, rowIndex, selection}: Props) => {
 				{segments.map((segment, segmentIndex) => (
 					<Text
 						key={`${row.id}:${segmentIndex}`}
-						color={toneColor(segment.tone)}
+						color={segment.color ?? toneColor(segment.tone)}
 						{...(segment.selected ? {backgroundColor: theme.selectionBackground} : {})}
 						{...(segment.bold ? {bold: true} : {})}
 						{...(segment.dim ? {dimColor: true} : {})}
 						{...(segment.italic ? {italic: true} : {})}
 						{...(segment.underline ? {underline: true} : {})}
+						{...(segment.strikethrough ? {strikethrough: true} : {})}
 					>
-						{segment.text}
+						{segment.link ? terminalHyperlink(segment.text, segment.link) : segment.text}
 					</Text>
 				))}
 			</Text>

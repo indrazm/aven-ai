@@ -78,16 +78,24 @@ export const useTranscriptController = (
 		scrollTopRef.current = visibleScrollTop;
 	}, [metrics.hasMeasured, visibleScrollTop]);
 
-	useEffect(() => {
-		selectionRef.current = selection;
-	}, [selection]);
+	const commitSelection = useCallback((next: SelectionState | null) => {
+		selectionRef.current = next;
+		setSelection(next);
+	}, []);
+
+	const copySelectedText = useCallback(
+		(next: SelectionState | null) => {
+			const value = selectedText(rows, next);
+			if (!value) return false;
+			copyText(value);
+			return true;
+		},
+		[copyText, rows],
+	);
 
 	const copySelection = useCallback(() => {
-		const value = selectedText(rows, selectionRef.current);
-		if (!value) return false;
-		copyText(value);
-		return true;
-	}, [copyText, rows]);
+		return copySelectedText(selectionRef.current);
+	}, [copySelectedText]);
 
 	useImperativeHandle(
 		handleRef,
@@ -105,13 +113,13 @@ export const useTranscriptController = (
 			copySelection,
 			clearSelection: () => {
 				if (!selectionRef.current) return false;
-				setSelection(null);
+				commitSelection(null);
 				return true;
 			},
 			hasSelection: () => Boolean(selectionRef.current),
 			isPinned: () => pinnedRef.current,
 		}),
-		[copySelection, maxScroll, updateScroll, viewportHeight],
+		[commitSelection, copySelection, maxScroll, updateScroll, viewportHeight],
 	);
 
 	useEffect(
@@ -141,30 +149,47 @@ export const useTranscriptController = (
 						Math.abs(lastClick.current.column - column) <= 1;
 					const count = recent ? Math.min(3, lastClick.current.count + 1) : 1;
 					lastClick.current = {time: event.timestamp, row: rowIndex, column, count};
-					if (count === 3) setSelection(lineSelection(row, rowIndex));
-					else if (count === 2) setSelection(wordSelection(row, rowIndex, column));
-					else
-						setSelection({
+					if (count === 3) {
+						const next = lineSelection(row, rowIndex);
+						commitSelection(next);
+						copySelectedText(next);
+					} else if (count === 2) {
+						const next = wordSelection(row, rowIndex, column);
+						commitSelection(next);
+						copySelectedText(next);
+					} else {
+						commitSelection({
 							anchor: {row: rowIndex, column},
 							focus: {row: rowIndex, column},
 							mode: 'character',
 							dragging: true,
 						});
+					}
 					return;
 				}
 				if (event.type === 'move' && selectionRef.current?.dragging) {
-					setSelection((current) => (current ? {...current, focus: {row: rowIndex, column}} : current));
+					commitSelection({...selectionRef.current, focus: {row: rowIndex, column}});
 					if (localY < bodyTop) updateScroll(scrollTopRef.current - 1);
 					if (localY >= metrics.height - 1) updateScroll(scrollTopRef.current + 1);
 					return;
 				}
 				if (event.type === 'up' && selectionRef.current?.dragging) {
-					setSelection((current) =>
-						current ? {...current, focus: {row: rowIndex, column}, dragging: false} : current,
-					);
+					const next = {...selectionRef.current, focus: {row: rowIndex, column}, dragging: false};
+					commitSelection(next);
+					copySelectedText(next);
 				}
 			}),
-		[maxScroll, metrics, rows, stickyHeight, subscribeMouse, topPadding, updateScroll, visibleScrollTop],
+		[
+			commitSelection,
+			copySelectedText,
+			metrics,
+			rows,
+			stickyHeight,
+			subscribeMouse,
+			topPadding,
+			updateScroll,
+			visibleScrollTop,
+		],
 	);
 
 	return {

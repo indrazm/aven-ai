@@ -21,7 +21,7 @@ export const readFileOperation = async (
 ): Promise<ReadResult> => {
 	let path = input.file_path;
 	try {
-		path = validatedPath(input.file_path);
+		path = validatedPath(input.file_path, context.projectRoot);
 		throwIfAborted(signal);
 		const metadata = await stat(path);
 		if (!metadata.isFile()) throw new FileToolValidationError('The path must point to a regular file.');
@@ -46,7 +46,7 @@ export const readFileOperation = async (
 			return {
 				status: 'unchanged',
 				tool: 'Read',
-				file_path: displayPath(path),
+				file_path: displayPath(path, context.projectRoot),
 				start_line: startLine,
 				num_lines: cached.readLines,
 				total_lines: cached.totalLines,
@@ -91,7 +91,7 @@ export const readFileOperation = async (
 		return {
 			status: 'success',
 			tool: 'Read',
-			file_path: displayPath(path),
+			file_path: displayPath(path, context.projectRoot),
 			content: formatted.join('\n'),
 			start_line: startLine,
 			num_lines: cachedLines.length,
@@ -100,6 +100,6 @@ export const readFileOperation = async (
 		};
 	} catch (error) {
 		if (signal.aborted) throw signal.reason ?? error;
-		return fileToolError('Read', path, error) as ReadResult;
+		return fileToolError('Read', path, error, context.projectRoot) as ReadResult;
 	}
 };

@@ -7,7 +7,9 @@ export const messagesFromMemory = (messages: Message[]): UiMessage[] => {
 	const calls = new Map<string, {name: string; summary: string}>();
 	for (const [messageIndex, message] of messages.entries()) {
 		if (message.role === 'user') {
-			const text = message.content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('\n');
+			const text =
+				displayContentFromMetadata(message.metadata) ??
+				message.content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('\n');
 			if (text)
 				output.push({
 					id: `history-user-${messageIndex}`,
@@ -55,3 +57,12 @@ const isBashMemoryMessage = (metadata: unknown): boolean =>
 	!Array.isArray(metadata) &&
 	'avenMode' in metadata &&
 	metadata.avenMode === 'bash';
+
+const displayContentFromMetadata = (metadata: unknown): string | undefined =>
+	typeof metadata === 'object' &&
+	metadata !== null &&
+	!Array.isArray(metadata) &&
+	'avenDisplayContent' in metadata &&
+	typeof metadata.avenDisplayContent === 'string'
+		? metadata.avenDisplayContent
+		: undefined;

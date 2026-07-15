@@ -31,7 +31,8 @@ const AppShell = ({runtime, workingDirectory}: {runtime: AgentRuntime; workingDi
 	const workspace = useRuntimeWorkspace(runtime);
 	const runtimeSession = useRuntimeSession(runtime, workspace.onTurnPhase);
 	const connection = useRuntimeConnection(runtime);
-	const input = useAppInput(transcriptRef, runtimeSession, connection, workspace);
+	const projectRoot = workspace.projectRoot ?? workingDirectory;
+	const input = useAppInput(transcriptRef, runtimeSession, connection, workspace, projectRoot);
 	const providerModel =
 		connection.state.status === 'connected' && connection.state.providerLabel && connection.state.model
 			? `${connection.state.providerLabel} · ${connection.state.model}`
@@ -54,11 +55,13 @@ const AppShell = ({runtime, workingDirectory}: {runtime: AgentRuntime; workingDi
 				mode={composer.inputMode}
 				status={session.status}
 				queuedPrompts={session.queuedRequests.map((request) => request.content)}
-				suggestions={input.commandSuggestions}
+				suggestions={input.suggestions}
 				selectedSuggestion={composer.suggestionIndex}
+				{...(input.suggestionMode ? {suggestionMode: input.suggestionMode} : {})}
+				{...(input.suggestionStatus ? {suggestionStatus: input.suggestionStatus} : {})}
 				exitHint={navigation.exitHint}
 				providerModel={providerModel}
-				workingDirectory={workspace.projectRoot ?? workingDirectory}
+				workingDirectory={projectRoot}
 				transcriptActive={navigation.transcriptMode}
 			/>
 		</Box>
@@ -80,7 +83,7 @@ export const App = ({
 			kind: 'system',
 			level: 'info',
 			content: isConfigurableRuntime(runtime)
-				? 'Welcome to Aven AI. Use /connect to choose a provider, or /setup to add one.'
+				? 'Welcome to Aven AI. Use /connect to choose or configure a provider.'
 				: 'Welcome to Aven AI. Local mock mode is active.',
 		},
 	];

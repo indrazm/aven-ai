@@ -11,7 +11,7 @@ const signal = new AbortController().signal;
 
 beforeEach(async () => {
 	directory = await mkdtemp(join(tmpdir(), 'aven-files-'));
-	service = new FileToolService();
+	service = new FileToolService(directory);
 });
 
 afterEach(async () => {
@@ -26,6 +26,7 @@ describe('FileToolService Read', () => {
 
 		await expect(service.read({file_path: path, offset: 2, limit: 2}, signal)).resolves.toMatchObject({
 			status: 'success',
+			file_path: 'example.txt',
 			content: '2\tbeta\n3\tgamma',
 			start_line: 2,
 			num_lines: 2,
@@ -38,16 +39,27 @@ describe('FileToolService Read', () => {
 		});
 	});
 
-	it('rejects relative paths, directories, binary files, and oversized files as structured errors', async () => {
+	it('resolves relative paths from the project root and rejects relative traversal', async () => {
+		const path = join(directory, 'relative.txt');
+		await writeFile(path, 'relative');
+
+		await expect(service.read({file_path: 'relative.txt'}, signal)).resolves.toMatchObject({
+			status: 'success',
+			file_path: 'relative.txt',
+			content: '1\trelative',
+		});
+		await expect(service.read({file_path: '../outside.txt'}, signal)).resolves.toMatchObject({
+			status: 'error',
+			error: expect.stringContaining('project root'),
+		});
+	});
+
+	it('rejects directories, binary files, and oversized files as structured errors', async () => {
 		const binary = join(directory, 'binary.bin');
 		const large = join(directory, 'large.txt');
 		await writeFile(binary, Buffer.from([1, 0, 2]));
 		await writeFile(large, Buffer.alloc(256 * 1024 + 1, 97));
 
-		await expect(service.read({file_path: 'relative.txt'}, signal)).resolves.toMatchObject({
-			status: 'error',
-			error: expect.stringContaining('absolute'),
-		});
 		await expect(service.read({file_path: directory}, signal)).resolves.toMatchObject({
 			status: 'error',
 			error: expect.stringContaining('regular file'),
@@ -77,21 +89,21 @@ describe('FileToolService Edit', () => {
 		const path = join(directory, 'edit.txt');
 		await writeFile(path, 'same same');
 
-		await expect(service.edit({file_path: path, old_string: 'same', new_string: 'new'}, signal)).resolves.toMatchObject(
-			{
-				status: 'error',
-				error: expect.stringContaining('Read'),
-			},
-		);
-		await service.read({file_path: path}, signal);
-		await expect(service.edit({file_path: path, old_string: 'same', new_string: 'new'}, signal)).resolves.toMatchObject(
-			{
-				status: 'error',
-				error: expect.stringContaining('not unique'),
-			},
-		);
 		await expect(
-			service.edit({file_path: path, old_string: 'same', new_string: 'new', replace_all: true}, signal),
+			service.edit({file_path: 'edit.txt', old_string: 'same', new_string: 'new'}, signal),
+		).resolves.toMatchObject({
+			status: 'error',
+			error: expect.stringContaining('Read'),
+		});
+		await service.read({file_path: 'edit.txt'}, signal);
+		await expect(
+			service.edit({file_path: 'edit.txt', old_string: 'same', new_string: 'new'}, signal),
+		).resolves.toMatchObject({
+			status: 'error',
+			error: expect.stringContaining('not unique'),
+		});
+		await expect(
+			service.edit({file_path: 'edit.txt', old_string: 'same', new_string: 'new', replace_all: true}, signal),
 		).resolves.toMatchObject({
 			status: 'success',
 			replacements: 2,
@@ -181,7 +193,7 @@ describe('FileToolService Edit', () => {
 describe('FileToolService Write', () => {
 	it('creates parents without a read but requires a read before overwriting', async () => {
 		const created = join(directory, 'deep', 'file.txt');
-		await expect(service.write({file_path: created, content: 'created'}, signal)).resolves.toMatchObject({
+		await expect(service.write({file_path: 'deep/file.txt', content: 'created'}, signal)).resolves.toMatchObject({
 			status: 'success',
 			operation: 'create',
 		});

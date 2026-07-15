@@ -1,16 +1,6 @@
 import type {ProviderId} from '../providers/index.js';
 
-export type OverlayRoute =
-	| 'help'
-	| 'sessions'
-	| 'commands'
-	| 'connect'
-	| 'setupProvider'
-	| 'setupBaseUrl'
-	| 'setupKey'
-	| 'model'
-	| 'theme'
-	| 'search';
+export type OverlayRoute = 'help' | 'sessions' | 'connect' | 'setupBaseUrl' | 'setupKey' | 'model' | 'theme' | 'search';
 
 export type OverlayState = {
 	route: OverlayRoute;

@@ -374,7 +374,7 @@ describe('AnviaAgentRuntime configuration', () => {
 		runtime.dispose();
 	});
 
-	it('emits the fifth consecutive tool failure before stopping the run', async () => {
+	it('keeps varied command failures separate and retains a global circuit breaker', async () => {
 		let modelTurn = 0;
 		const streamingModel = {
 			...model,
@@ -427,12 +427,12 @@ describe('AnviaAgentRuntime configuration', () => {
 		const visibleFailures = events.filter(
 			(event) => event.type === 'message.replaced' && event.message.kind === 'tool' && event.message.status === 'error',
 		);
-		expect(modelTurn).toBe(5);
-		expect(ptyRunner.run).toHaveBeenCalledTimes(5);
-		expect(visibleFailures).toHaveLength(5);
+		expect(modelTurn).toBe(10);
+		expect(ptyRunner.run).toHaveBeenCalledTimes(10);
+		expect(visibleFailures).toHaveLength(10);
 		expect(JSON.stringify(events)).not.toContain('agent_guidance');
 		expect(failure).toBeInstanceOf(Error);
-		expect((failure as Error).message).toContain('ExecCommand failed 5 consecutive times.');
+		expect((failure as Error).message).toContain('Tool calls failed 10 consecutive times without a success.');
 		runtime.dispose();
 	});
 

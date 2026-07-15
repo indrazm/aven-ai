@@ -42,7 +42,7 @@ export const Overlay = ({route, query, items, selectedIndex}: Props) => {
 					<Text inverse> </Text>
 				</Text>
 			) : null}
-			{route === 'sessions' || route === 'search' || route === 'commands' || route === 'model' ? (
+			{route === 'sessions' || route === 'search' || route === 'model' ? (
 				<Text color={theme.text}>
 					⌕ {query}
 					<Text inverse> </Text>

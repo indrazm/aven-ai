@@ -29,12 +29,39 @@ const displayToolSummary = (message: Extract<UiMessage, {kind: 'tool'}>): string
 		: message.summary;
 };
 
+const toolSummaryRow = (message: Extract<UiMessage, {kind: 'tool'}>, contentWidth: number): TranscriptRow => {
+	const statusTone =
+		message.status === 'error' || message.status === 'rejected'
+			? 'error'
+			: message.status === 'success'
+				? 'success'
+				: message.status === 'waitingPermission'
+					? 'permission'
+					: 'tool';
+	const segments: RowSegment[] = [
+		{
+			text: `${TOOL_STATUS_MARKER[message.status]} ${message.name}`,
+			tone: statusTone,
+			bold: true,
+			selectable: false,
+		},
+		{text: '  ', selectable: false},
+		{text: displayToolSummary(message), tone: 'muted'},
+	];
+	const wrapped = wrapSegments(segments, contentWidth);
+	if (wrapped.length === 1) return makeRow(message, 0, wrapped[0] ?? []);
+
+	const truncated = wrapSegments(segments, Math.max(1, contentWidth - 1))[0] ?? [];
+	return makeRow(message, 0, [...truncated, {text: '…', tone: 'muted', selectable: false}]);
+};
+
 const toolDetailRows = (
 	message: Extract<UiMessage, {kind: 'tool'}>,
 	contentWidth: number,
 	expanded: boolean,
 ): TranscriptRow[] => {
 	if (!message.detail) return [];
+	if (message.name === 'ExecCommand' && !expanded) return [];
 	if (message.group === 'read' && message.status === 'success') return [];
 	const detailTone = message.status === 'error' ? 'error' : 'muted';
 	const detailWidth = Math.max(1, contentWidth - stringWidth(TOOL_DETAIL_PREFIX));
@@ -74,8 +101,11 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 				: message.variant === 'advisor'
 					? [{text: '◇ ', tone: 'permission', selectable: false}]
 					: [{text: '● ', tone: 'accent', selectable: false}];
-		const rows = markdownRows(message, message.content, contentWidth);
-		if (rows[0]) rows[0].segments = [...prefix, ...rows[0].segments];
+		const gutterWidth = stringWidth(prefix[0]?.text ?? '');
+		const rows = markdownRows(message, message.content, Math.max(1, contentWidth - gutterWidth));
+		for (const [index, row] of rows.entries()) {
+			row.segments = [index === 0 ? prefix[0]! : {text: ' '.repeat(gutterWidth), selectable: false}, ...row.segments];
+		}
 		return rows;
 	}
 
@@ -91,27 +121,7 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 	}
 
 	if (message.kind === 'tool') {
-		const statusTone =
-			message.status === 'error' || message.status === 'rejected'
-				? 'error'
-				: message.status === 'success'
-					? 'success'
-					: message.status === 'waitingPermission'
-						? 'permission'
-						: 'tool';
-		const lines = wrapSegments(
-			[
-				{
-					text: `${TOOL_STATUS_MARKER[message.status]} ${message.name}`,
-					tone: statusTone,
-					bold: true,
-					selectable: false,
-				},
-				{text: '  ', selectable: false},
-				{text: displayToolSummary(message), tone: 'muted'},
-			],
-			contentWidth,
-		).map((segments, index) => makeRow(message, index, segments));
+		const lines = [toolSummaryRow(message, contentWidth)];
 		for (const row of toolDetailRows(message, contentWidth, expanded)) {
 			lines.push({...row, id: `${message.id}:${lines.length}`});
 		}
@@ -153,6 +163,9 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 };
 
 export const shouldSeparateMessages = (previous: UiMessage, current: UiMessage): boolean => {
+	const previousIsCommand = previous.kind === 'tool' && previous.name === 'ExecCommand';
+	const currentIsCommand = current.kind === 'tool' && current.name === 'ExecCommand';
+	if (previousIsCommand || currentIsCommand) return false;
 	const previousIsActivity = previous.kind === 'tool' || previous.kind === 'diff';
 	const currentIsActivity = current.kind === 'tool' || current.kind === 'diff';
 	return !(previousIsActivity && currentIsActivity);

@@ -16,4 +16,5 @@ export {
 	type ProviderStatus,
 	type RuntimeEvent,
 	type SubmitRequest,
+	type WorkspaceMention,
 } from './types.js';

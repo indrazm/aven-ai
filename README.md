@@ -15,15 +15,16 @@ aven
 
 The install includes the matching [Lexa](https://github.com/anvia-hq/lexa) native code-intelligence binary. Aven verifies that required binary before opening the terminal interface.
 
-On first launch, run `/setup` to choose a provider and add its API key.
+On first launch, run `/connect` to choose a provider and add its API key.
 
 ## Features
 
 - Full-screen terminal interface with Markdown rendering
+- Fuzzy `@` mentions for project files and folders
 - File reading, editing, and writing with inline diffs
 - PTY-backed shell command execution
 - Project-scoped sessions and searchable history
-- Mouse scrolling, text selection, and clipboard support
+- Mouse scrolling with drag, word, and line selections that copy automatically
 - Multiple model providers, including OpenAI, Anthropic, OpenRouter, DeepSeek, GitHub Models, and more
 
 ## Usage
@@ -34,28 +35,35 @@ Type a prompt and press `Enter`. Prefix a command with `!` to run it directly in
 !git status
 ```
 
+Type `@` anywhere at a token boundary to find a non-ignored project file or folder. Use the arrow keys to choose a result, then press `Tab` or `Enter` to insert it:
+
+```text
+Review @src/modules/app/ and @"docs/release notes.md"
+```
+
+Mentions are project-relative references. Aven tells the agent which paths you selected, and the agent reads only what it needs with the existing file and search tools.
+
 Common slash commands:
 
 | Command        | Action                               |
 | -------------- | ------------------------------------ |
-| `/setup`       | Configure provider credentials       |
-| `/connect`     | Connect to a configured provider     |
+| `/connect`     | Connect or configure a provider      |
 | `/model`       | Change the active model              |
 | `/new`         | Start a new session                  |
 | `/resume`      | Find and resume a previous session   |
 | `/resume-last` | Resume the most recent session       |
-| `/commands`    | Browse all available commands        |
 | `/help`        | Show controls and keyboard shortcuts |
 
 Useful controls:
 
-| Input                       | Action                |
-| --------------------------- | --------------------- |
-| `Enter`                     | Submit a prompt       |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline      |
-| `Page Up` / `Page Down`     | Scroll the transcript |
-| `Esc`                       | Close or cancel       |
-| `Ctrl+C`                    | Interrupt active work |
+| Input                       | Action                 |
+| --------------------------- | ---------------------- |
+| `Enter`                     | Submit a prompt        |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline       |
+| `@`, then `Tab` / `Enter`   | Mention a project path |
+| `Page Up` / `Page Down`     | Scroll the transcript  |
+| `Esc`                       | Close or cancel        |
+| `Ctrl+C`                    | Interrupt active work  |
 
 ## Local data
 
@@ -65,7 +73,7 @@ Aven stores configuration and project-scoped session data under:
 ${XDG_CONFIG_HOME:-~/.config}/aven-ai
 ```
 
-Provider credentials are stored locally in `config.toml` with owner-only permissions. Add or replace credentials through `/setup`.
+Provider credentials are stored locally in `config.toml` with owner-only permissions. Add credentials through `/connect`; if a saved credential fails, `/connect` prompts for a replacement.
 
 Commands run with the same permissions as the Aven process and are not sandboxed. Review commands and file changes before accepting them.
 

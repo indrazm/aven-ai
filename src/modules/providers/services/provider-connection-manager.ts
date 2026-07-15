@@ -16,7 +16,7 @@ export class MissingProviderKeyError extends Error {
 	readonly provider: ProviderId;
 
 	constructor(provider: ProviderId) {
-		super(`No credentials configured for ${providers[provider].label}. Run /setup.`);
+		super(`No credentials configured for ${providers[provider].label}. Run /connect.`);
 		this.name = 'MissingProviderKeyError';
 		this.provider = provider;
 	}

@@ -9,6 +9,8 @@ const context = (value = '', overrides: Partial<ComposerInputContext> = {}): Com
 	...overrides,
 });
 
+const commandSuggestion = {kind: 'command', label: '/connect', description: 'Connect'} as const;
+
 describe('composer input intents', () => {
 	it('keeps mode and editor transitions pure', () => {
 		expect(composerInputIntent('!', {}, context())).toEqual({type: 'setInputMode', mode: 'bash'});
@@ -24,11 +26,24 @@ describe('composer input intents', () => {
 	});
 
 	it('gives command suggestions precedence over prompt history', () => {
-		const withSuggestions = context('/c', {suggestions: [{label: '/connect'}]});
+		const withSuggestions = context('/c', {suggestions: [commandSuggestion]});
 		expect(composerInputIntent('', {downArrow: true}, withSuggestions)).toEqual({type: 'selectSuggestion', amount: 1});
-		expect(composerInputIntent('', {tab: true}, withSuggestions)).toEqual({
-			type: 'setEditor',
-			editor: {value: '/connect', cursor: 8},
+		expect(composerInputIntent('', {tab: true}, withSuggestions)).toEqual({type: 'acceptSuggestion'});
+	});
+
+	it('accepts mention suggestions with Tab or Enter before submitting', () => {
+		const mentionSuggestion = {
+			kind: 'mention',
+			label: '@src/app.ts',
+			description: 'file',
+			path: 'src/app.ts',
+			pathKind: 'file',
+		} as const;
+		const withMention = context('Review @src/a', {suggestions: [mentionSuggestion], suggestionsVisible: true});
+		expect(composerInputIntent('', {tab: true}, withMention)).toEqual({type: 'acceptSuggestion'});
+		expect(composerInputIntent('', {return: true}, withMention)).toEqual({type: 'acceptSuggestion'});
+		expect(composerInputIntent('', {return: true}, context('Review @missing', {suggestionsVisible: true}))).toEqual({
+			type: 'submit',
 		});
 	});
 
@@ -71,7 +86,7 @@ describe('composer input intents', () => {
 	});
 
 	it('covers escape, help, modifier, and empty-suggestion branches', () => {
-		expect(composerInputIntent('', {escape: true}, context('/c', {suggestions: [{label: '/connect'}]}))).toEqual({
+		expect(composerInputIntent('', {escape: true}, context('/c', {suggestions: [commandSuggestion]}))).toEqual({
 			type: 'hideSuggestions',
 		});
 		expect(composerInputIntent('', {escape: true}, context('clear me'))).toEqual({
@@ -80,7 +95,7 @@ describe('composer input intents', () => {
 		});
 		expect(composerInputIntent('', {escape: true}, context())).toEqual({type: 'handled'});
 		expect(composerInputIntent('?', {}, context())).toEqual({type: 'openHelp'});
-		expect(composerInputIntent('', {upArrow: true}, context('/c', {suggestions: [{label: '/connect'}]}))).toEqual({
+		expect(composerInputIntent('', {upArrow: true}, context('/c', {suggestions: [commandSuggestion]}))).toEqual({
 			type: 'selectSuggestion',
 			amount: -1,
 		});
@@ -89,7 +104,7 @@ describe('composer input intents', () => {
 				'',
 				{tab: true},
 				context('/c', {
-					suggestions: [{label: '/connect'}],
+					suggestions: [commandSuggestion],
 					suggestionIndex: 2,
 				}),
 			),

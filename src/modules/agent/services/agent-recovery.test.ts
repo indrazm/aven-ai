@@ -26,10 +26,11 @@ const applyResult = async (
 	recovery: ReturnType<typeof createAgentRecovery>,
 	result: string,
 	call = 1,
+	args = '{}',
 ): Promise<Record<string, unknown> | undefined> => {
 	const output = await recovery.middleware.onToolOutput?.({
 		toolName: 'ExecCommand',
-		args: '{}',
+		args,
 		result,
 		originalResult: result,
 		turn: call,
@@ -60,7 +61,7 @@ describe('agent recovery', () => {
 		expect(repeatingSuffix(['A', 'B', 'A', 'B', 'A'])).toBeUndefined();
 	});
 
-	it('adds reflection guidance, warns at three failures, and stops after the fifth visible failure', async () => {
+	it('adds reflection guidance, warns at three identical failures, and stops after the fifth', async () => {
 		const recovery = createAgentRecovery();
 
 		for (let call = 1; call <= 5; call++) {
@@ -72,8 +73,25 @@ describe('agent recovery', () => {
 
 		expect(await startNextTurn(recovery)).toEqual({
 			type: 'terminate',
-			reason: 'ExecCommand failed 5 consecutive times.',
+			reason: 'ExecCommand failed 5 consecutive times with the same arguments.',
 		});
+	});
+
+	it('does not combine failures from materially different commands', async () => {
+		const recovery = createAgentRecovery();
+
+		for (let call = 1; call <= 6; call++) {
+			const result = await applyResult(
+				recovery,
+				failedCommandResult,
+				call,
+				JSON.stringify({command: `failing-command-${call}`}),
+			);
+			expect(result?.agent_guidance).toContain('(1/5)');
+			expect(result?.agent_guidance).toContain(`${call}/10`);
+		}
+
+		expect(await startNextTurn(recovery)).toBeUndefined();
 	});
 
 	it('resets a tool failure streak after a successful result', async () => {
@@ -84,6 +102,7 @@ describe('agent recovery', () => {
 
 		const result = await applyResult(recovery, failedCommandResult, 4);
 		expect(result?.agent_guidance).toContain('(1/5)');
+		expect(result?.agent_guidance).toContain('1/10');
 	});
 
 	it('skips the third repeated call and stops after the fifth repetition', async () => {

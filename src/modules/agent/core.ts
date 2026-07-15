@@ -41,7 +41,7 @@ export type AnviaRuntimeOptions = {
 
 export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessionRuntime {
 	readonly #directCommands: DirectCommandExecutor;
-	readonly #files = new FileToolService();
+	readonly #files: FileToolService;
 	readonly #projectRoot: string;
 	readonly #projectSessions: ProjectSessionManager;
 	readonly #promptTurns: PromptTurnExecutor;
@@ -53,6 +53,7 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 	constructor(options: AnviaRuntimeOptions) {
 		this.#projectRoot = realpathSync(options.projectRoot ?? process.cwd());
 		if (!statSync(this.#projectRoot).isDirectory()) throw new Error('Project root must be a directory.');
+		this.#files = new FileToolService(this.#projectRoot);
 		const memory = createSqliteMemoryStore({
 			path: options.memoryPath ?? join(defaultConfigDirectory(), 'memory.sqlite'),
 		});
@@ -150,7 +151,7 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 			}
 			const model = this.#providers.model;
 			if (this.#providers.state.status !== 'connected' || !model) {
-				throw new Error('No provider connected. Run /connect or /setup.');
+				throw new Error('No provider connected. Run /connect.');
 			}
 			yield* this.#promptTurns.run(request, signal, model, sessionId);
 			yield* this.#completeSessionTurn(request.id);

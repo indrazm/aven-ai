@@ -1,13 +1,14 @@
 import type {Key} from 'ink';
 import type {InputMode} from '../../agent/index.js';
 import {backspace, deleteForward, insertText, moveCursor, moveLineBoundary} from './editor.js';
-import type {EditorState} from '../types.js';
+import type {EditorState, Suggestion} from '../types.js';
 
 export type ComposerInputContext = {
 	editor: EditorState;
 	inputMode: InputMode;
-	suggestions: readonly {label: string}[];
+	suggestions: readonly Suggestion[];
 	suggestionIndex: number;
+	suggestionsVisible?: boolean;
 };
 
 export type ComposerInputIntent =
@@ -17,6 +18,7 @@ export type ComposerInputIntent =
 	| {type: 'setInputMode'; mode: InputMode}
 	| {type: 'openHelp'}
 	| {type: 'selectSuggestion'; amount: -1 | 1}
+	| {type: 'acceptSuggestion'}
 	| {type: 'history'; amount: -1 | 1}
 	| {type: 'submit'}
 	| {type: 'handled'}
@@ -28,29 +30,29 @@ export const composerInputIntent = (
 	context: ComposerInputContext,
 ): ComposerInputIntent => {
 	const {editor, inputMode, suggestions, suggestionIndex} = context;
+	const suggestionsVisible = context.suggestionsVisible ?? suggestions.length > 0;
 	if (key.ctrl && input === 'd') {
 		return editor.value ? {type: 'setEditor', editor: deleteForward(editor)} : {type: 'armExit'};
 	}
 	if (key.escape) {
-		if (suggestions.length > 0) return {type: 'hideSuggestions'};
+		if (suggestionsVisible) return {type: 'hideSuggestions'};
 		if (inputMode === 'bash' && !editor.value) return {type: 'setInputMode', mode: 'prompt'};
 		if (editor.value) return {type: 'setEditor', editor: {value: '', cursor: 0}};
 		return {type: 'handled'};
 	}
 	if (editor.value === '' && input === '?' && inputMode === 'prompt') return {type: 'openHelp'};
 	if (editor.value === '' && input === '!' && inputMode === 'prompt') return {type: 'setInputMode', mode: 'bash'};
-	if (suggestions.length > 0 && (key.upArrow || key.downArrow)) {
-		return {type: 'selectSuggestion', amount: key.upArrow ? -1 : 1};
+	if (suggestionsVisible && (key.upArrow || key.downArrow)) {
+		return suggestions.length > 0 ? {type: 'selectSuggestion', amount: key.upArrow ? -1 : 1} : {type: 'handled'};
 	}
-	if (suggestions.length > 0 && key.tab) {
+	if (suggestionsVisible && key.tab) {
 		const suggestion = suggestions[suggestionIndex];
-		return suggestion
-			? {type: 'setEditor', editor: {value: suggestion.label, cursor: suggestion.label.length}}
-			: {type: 'handled'};
+		return suggestion ? {type: 'acceptSuggestion'} : {type: 'handled'};
 	}
 	if (key.return) {
 		if (key.shift || key.meta) return {type: 'setEditor', editor: insertText(editor, '\n')};
 		if (editor.value.endsWith('\\')) return {type: 'setEditor', editor: insertText(backspace(editor), '\n')};
+		if (suggestions[suggestionIndex]?.kind === 'mention') return {type: 'acceptSuggestion'};
 		return {type: 'submit'};
 	}
 	if (key.backspace) return {type: 'setEditor', editor: backspace(editor), revealSuggestions: true};

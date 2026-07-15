@@ -1,12 +1,12 @@
 import {useCallback, useEffect, useRef} from 'react';
-import type {AgentStatus, InputMode, SubmitRequest} from '../../agent/index.js';
+import type {AgentStatus, InputMode, SubmitRequest, WorkspaceMention} from '../../agent/index.js';
 import type {AgentRuntime} from '../../agent/index.js';
 import {normalizeInput} from '../../composer/index.js';
 import {useAppStore, useAppStoreApi} from '../components/app-provider.js';
 import {RuntimeEventBatcher} from './runtime-event-batcher.js';
 
 export type RuntimeSession = {
-	submit: (content: string, mode: InputMode) => void;
+	submit: (content: string, mode: InputMode, mentions?: readonly WorkspaceMention[]) => void;
 	interrupt: () => void;
 };
 
@@ -56,10 +56,15 @@ export const useRuntimeSession = (
 	);
 
 	const submit = useCallback(
-		(value: string, mode: InputMode) => {
+		(value: string, mode: InputMode, mentions: readonly WorkspaceMention[] = []) => {
 			const content = normalizeInput(value).trim();
 			if (!content) return;
-			const request: SubmitRequest = {id: `live-${++sequence.current}`, content, mode};
+			const request: SubmitRequest = {
+				id: `live-${++sequence.current}`,
+				content,
+				mode,
+				...(mentions.length > 0 ? {mentions: [...mentions]} : {}),
+			};
 			const state = store.getState();
 			if (controller.current || state.activeTurnId || !canStartTurn(state.status)) state.enqueueRequest(request);
 			else void execute(request);

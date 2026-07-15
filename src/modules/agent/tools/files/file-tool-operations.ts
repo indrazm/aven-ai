@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {lstat, stat} from 'node:fs/promises';
+import {isAbsolute, relative, sep} from 'node:path';
 import type {EditResult, ReadResult, WriteResult} from './contracts.js';
 import {FileToolValidationError} from './file-tool-error.js';
 import type {FileReadState, FileStateCache} from './file-state-cache.js';
@@ -13,11 +14,18 @@ export const MAX_MUTATION_BYTES = 16 * 1024 * 1024;
 export type FileToolContext = {
 	cache: FileStateCache;
 	mutations: MutationJournal;
+	projectRoot: string;
 };
 
 export const contentFingerprint = (content: string): string => createHash('sha256').update(content).digest('hex');
 
-export const displayPath = (path: string): string => path;
+export const displayPath = (path: string, projectRoot: string): string => {
+	if (!isAbsolute(path)) return path.split(sep).join('/');
+	const projectRelative = relative(projectRoot, path);
+	if (projectRelative === '') return '.';
+	if (projectRelative === '..' || projectRelative.startsWith(`..${sep}`) || isAbsolute(projectRelative)) return path;
+	return projectRelative.split(sep).join('/');
+};
 
 export const throwIfAborted = (signal: AbortSignal): void => {
 	if (signal.aborted) throw signal.reason ?? new Error('Aborted');
@@ -27,10 +35,11 @@ export const fileToolError = (
 	tool: 'Read' | 'Edit' | 'Write',
 	path: string,
 	error: unknown,
+	projectRoot: string,
 ): ReadResult | EditResult | WriteResult => ({
 	status: 'error',
 	tool,
-	file_path: displayPath(path),
+	file_path: displayPath(path, projectRoot),
 	error: error instanceof Error ? error.message : String(error),
 });
 
