@@ -40,7 +40,12 @@ const AppShell = ({runtime, workingDirectory}: {runtime: AgentRuntime; workingDi
 
 	return (
 		<Box width={Math.max(1, columns)} height={Math.max(1, rows)} flexDirection="column" overflow="hidden">
-			<VirtualTranscript ref={transcriptRef} messages={session.messages} active={navigation.transcriptMode} />
+			<VirtualTranscript
+				ref={transcriptRef}
+				messages={session.messages}
+				active={navigation.transcriptMode}
+				streamingAssistantId={session.streamingAssistantId}
+			/>
 			{navigation.overlay ? (
 				<Overlay
 					route={navigation.overlay.route}

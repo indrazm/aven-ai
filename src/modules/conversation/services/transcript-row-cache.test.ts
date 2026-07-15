@@ -31,4 +31,32 @@ describe('TranscriptRowCache', () => {
 		cache.rowsFor(changed, 60, true);
 		expect(render).toHaveBeenCalledTimes(7);
 	});
+
+	it('reuses rows until the visible streaming prefix advances, then reveals the final tail', () => {
+		const render = vi.fn(messageToRows);
+		const cache = new TranscriptRowCache(render);
+		const first: UiMessage = {
+			id: 'stream',
+			kind: 'assistant',
+			variant: 'text',
+			content: 'complete\npart',
+		};
+
+		expect(
+			cache.rowsFor([first], 80, false, 'stream').map((row) => row.segments.map((part) => part.text).join('')),
+		).toEqual(['● complete']);
+		expect(render).toHaveBeenCalledTimes(1);
+
+		const samePrefix = {...first, content: 'complete\npartial'};
+		cache.rowsFor([samePrefix], 80, false, 'stream');
+		expect(render).toHaveBeenCalledTimes(1);
+
+		const nextLine = {...first, content: 'complete\npartial\n'};
+		cache.rowsFor([nextLine], 80, false, 'stream');
+		expect(render).toHaveBeenCalledTimes(2);
+
+		const completed = cache.rowsFor([nextLine], 80, false, null);
+		expect(render).toHaveBeenCalledTimes(3);
+		expect(completed.map((row) => row.segments.map((part) => part.text).join(''))).toEqual(['● complete', '  partial']);
+	});
 });

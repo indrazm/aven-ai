@@ -3,6 +3,7 @@ export {TranscriptRow} from './components/transcript-row.js';
 export {transcriptInputIntent, type TranscriptInputIntent} from './services/input-intent.js';
 export type {
 	AssistantMessage,
+	DiffHunk,
 	DiffMessage,
 	RowSegment,
 	RowTone,

@@ -1,7 +1,8 @@
 import type {AgentStreamEvent} from '@anvia/core';
-import type {ToolMessage} from '../../conversation/index.js';
+import type {DiffMessage, ToolMessage} from '../../conversation/index.js';
 import type {RuntimeEvent} from '../types.js';
 import type {FileMutation} from '../tools/files/file-tool-service.js';
+import {buildDiffPreview} from './diff-preview.js';
 import {
 	groupForTool,
 	parseFileResult,
@@ -21,6 +22,11 @@ export type PendingToolCall = {
 
 export type MutationSource = {
 	takeMutation(operationId: string): FileMutation | undefined;
+};
+
+const withoutDetail = (message: ToolMessage): ToolMessage => {
+	const {detail: _detail, ...compact} = message;
+	return compact;
 };
 
 const pendingToolIndex = (queue: PendingToolCall[], resultId: string | undefined, toolName: string): number => {
@@ -84,23 +90,24 @@ export const eventToRuntimeEvents = (
 				event.result,
 				pending?.summary ?? summaryFromSerializedArguments(event.toolName, event.args),
 			);
-			const output: RuntimeEvent[] = [{type: 'message.replaced', message: toolMessage}];
 			const fileResult = parseFileResult(event.result);
+			let diffMessage: DiffMessage | undefined;
 			if (fileResult?.status === 'success' && 'operation_id' in fileResult) {
 				const mutation = mutationSource?.takeMutation(fileResult.operation_id);
 				if (mutation) {
-					output.push({
-						type: 'message.appended',
-						message: {
-							id: `diff-${id}`,
-							kind: 'diff',
-							file: mutation.file,
-							before: mutation.before,
-							after: mutation.after,
-						},
+					diffMessage = buildDiffPreview({
+						id: `diff-${id}`,
+						file: mutation.file,
+						tool: fileResult.tool,
+						...('operation' in fileResult ? {operation: fileResult.operation} : {}),
+						before: mutation.before,
+						after: mutation.after,
 					});
 				}
 			}
+			const displayedToolMessage = diffMessage && !diffMessage.unavailable ? withoutDetail(toolMessage) : toolMessage;
+			const output: RuntimeEvent[] = [{type: 'message.replaced', message: displayedToolMessage}];
+			if (diffMessage) output.push({type: 'message.appended', message: diffMessage});
 			output.push({type: 'status.changed', status: 'thinking'});
 			return output;
 		}

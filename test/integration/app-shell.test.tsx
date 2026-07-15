@@ -58,7 +58,9 @@ class PausedStreamingRuntime implements AgentRuntime {
 		yield {
 			type: 'assistant.delta',
 			messageId: `assistant-${request.id}`,
-			delta: Array.from({length: 35}, (_, index) => `streamed line ${String(index + 1).padStart(2, '0')}`).join('\n'),
+			delta: `${Array.from({length: 35}, (_, index) => `streamed line ${String(index + 1).padStart(2, '0')}`).join(
+				'\n',
+			)}\n`,
 		};
 		await new Promise<void>((resolve) => {
 			this.#resume = resolve;
@@ -66,8 +68,30 @@ class PausedStreamingRuntime implements AgentRuntime {
 		yield {
 			type: 'assistant.delta',
 			messageId: `assistant-${request.id}`,
-			delta: Array.from({length: 5}, (_, index) => `\nstreamed line ${String(index + 36).padStart(2, '0')}`).join(''),
+			delta: Array.from({length: 5}, (_, index) => `streamed line ${String(index + 36).padStart(2, '0')}`).join('\n'),
 		};
+		yield {type: 'turn.completed', turnId: request.id};
+	}
+
+	dispose(): void {}
+}
+
+class LineBufferedStreamingRuntime implements AgentRuntime {
+	#resume: (() => void) | undefined;
+
+	release(): void {
+		this.#resume?.();
+	}
+
+	async *run(request: SubmitRequest): AsyncIterable<RuntimeEvent> {
+		const messageId = `assistant-${request.id}`;
+		yield {type: 'turn.started', request};
+		yield {type: 'assistant.delta', messageId, delta: 'Completed line.\nIncomplete'};
+		await new Promise<void>((resolve) => {
+			this.#resume = resolve;
+		});
+		yield {type: 'assistant.delta', messageId, delta: ' tail'};
+		yield {type: 'assistant.completed', messageId};
 		yield {type: 'turn.completed', turnId: request.id};
 	}
 
@@ -182,6 +206,24 @@ describe('App shell and composer', () => {
 		unmount();
 	});
 
+	it('dispatches deltas immediately but reveals only completed lines until completion', async () => {
+		vi.useFakeTimers();
+		const runtime = new LineBufferedStreamingRuntime();
+		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
+		stdin.write('stream');
+		await vi.advanceTimersByTimeAsync(0);
+		stdin.write('\r');
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(lastFrame()).toContain('Completed line.');
+		expect(lastFrame()).not.toContain('Incomplete');
+
+		runtime.release();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(lastFrame()).toContain('Incomplete tail');
+		unmount();
+	});
+
 	it('holds the reading position when new streamed output arrives', async () => {
 		const runtime = new PausedStreamingRuntime();
 		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
@@ -266,7 +308,7 @@ describe('App shell and composer', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		stdin.write('second');
 		await vi.advanceTimersByTimeAsync(0);
-		stdin.write('\r');
+		stdin.write('\t');
 		await vi.advanceTimersByTimeAsync(0);
 		expect(lastFrame()).toContain('queued · second');
 

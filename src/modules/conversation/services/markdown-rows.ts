@@ -2,13 +2,8 @@ import {marked, type Token, type Tokens} from 'marked';
 import stringWidth from 'string-width';
 import type {UiMessage} from '../types.js';
 import type {RowSegment, TranscriptRow} from '../types.js';
-import {
-	cleanMarkdownSource,
-	cleanMarkdownText,
-	highlightCode,
-	renderInlineTokens,
-	type SegmentStyle,
-} from './markdown-inline.js';
+import {cleanMarkdownSource, cleanMarkdownText, renderInlineTokens, type SegmentStyle} from './markdown-inline.js';
+import {highlightCode} from './syntax-highlighting.js';
 import {renderMarkdownTable, type RenderedMarkdownRow} from './markdown-table.js';
 import {makeRow} from './row-model.js';
 import {wrapSegments} from './wrapping.js';

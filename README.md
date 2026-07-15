@@ -29,7 +29,7 @@ On first launch, run `/connect` to choose a provider and add its API key.
 
 ## Usage
 
-Type a prompt and press `Enter`. Prefix a command with `!` to run it directly in the project shell:
+Type a prompt and press `Enter`. While Aven is responding, press `Enter` to steer the active turn or `Tab` to queue the prompt for the next turn. Prefix a command with `!` to run it directly in the project shell:
 
 ```text
 !git status
@@ -56,14 +56,15 @@ Common slash commands:
 
 Useful controls:
 
-| Input                       | Action                 |
-| --------------------------- | ---------------------- |
-| `Enter`                     | Submit a prompt        |
-| `Shift+Enter` / `Alt+Enter` | Insert a newline       |
-| `@`, then `Tab` / `Enter`   | Mention a project path |
-| `Page Up` / `Page Down`     | Scroll the transcript  |
-| `Esc`                       | Close or cancel        |
-| `Ctrl+C`                    | Interrupt active work  |
+| Input                       | Action                               |
+| --------------------------- | ------------------------------------ |
+| `Enter`                     | Submit; steer while a turn is active |
+| `Tab` during an active turn | Queue the prompt for the next turn   |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline                     |
+| `@`, then `Tab` / `Enter`   | Mention a project path while idle    |
+| `Page Up` / `Page Down`     | Scroll the transcript                |
+| `Esc`                       | Close or cancel                      |
+| `Ctrl+C`                    | Interrupt active work                |
 
 ## Local data
 

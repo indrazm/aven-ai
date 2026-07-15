@@ -57,11 +57,13 @@ export const Composer = ({
 	const showSpinner = status === 'thinking' || status === 'runningTool' || status === 'waitingPermission';
 	const controls = transcriptActive
 		? '↑↓/jk scroll · pgup/pgdn page · g/G ends · esc close'
-		: suggestionMode === 'mention'
-			? '↑↓ choose · tab/enter insert · esc close'
-			: suggestionMode === 'command'
-				? '↑↓ choose · tab complete · enter run'
-				: '@ files · shift+enter newline';
+		: showSpinner
+			? 'enter steer · tab queue · shift+enter newline'
+			: suggestionMode === 'mention'
+				? '↑↓ choose · tab/enter insert · esc close'
+				: suggestionMode === 'command'
+					? '↑↓ choose · tab complete · enter run'
+					: '@ files · shift+enter newline';
 
 	return (
 		<Box flexDirection="column" flexShrink={0}>
@@ -72,6 +74,9 @@ export const Composer = ({
 							◌ queued · {prompt}
 						</Text>
 					))}
+					{queuedPrompts.length > 3 ? (
+						<Text color={theme.muted}>◌ queued · +{queuedPrompts.length - 3} more</Text>
+					) : null}
 				</Box>
 			) : null}
 			{suggestions.length > 0 || suggestionStatus ? (

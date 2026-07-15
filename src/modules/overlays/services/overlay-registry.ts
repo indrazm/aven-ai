@@ -13,9 +13,10 @@ export const overlayTitle: Record<OverlayRoute, string> = {
 
 const items: Record<OverlayRoute, readonly OverlayItem[]> = {
 	help: [
-		{label: 'Enter', description: 'submit prompt'},
+		{label: 'Enter', description: 'submit prompt; steer while Aven is working'},
+		{label: 'Tab while active', description: 'queue prompt for the next turn'},
 		{label: 'Shift/Alt+Enter', description: 'insert newline'},
-		{label: '@', description: 'mention a project file or folder; Tab/Enter inserts'},
+		{label: '@', description: 'mention a project file or folder; Tab/Enter inserts while idle'},
 		{label: 'Ctrl+O', description: 'toggle transcript navigation and expand tool output'},
 		{label: 'Ctrl+C', description: 'interrupt; press twice while idle to exit'},
 		{label: 'Ctrl+D', description: 'press twice on empty input to exit'},

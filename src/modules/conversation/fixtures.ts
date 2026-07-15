@@ -19,5 +19,15 @@ export const demoMessages: UiMessage[] = [
 		group: 'bash',
 	},
 	{id: 'system-1', kind: 'system', level: 'info', content: 'Rendering fixture'},
-	{id: 'diff-1', kind: 'diff', file: 'source/server.ts', before: 'old\n', after: 'new\n'},
+	{
+		id: 'diff-1',
+		kind: 'diff',
+		file: 'source/server.ts',
+		tool: 'Edit',
+		presentation: 'patch',
+		hunks: [{oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ['-old', '+new']}],
+		additions: 1,
+		deletions: 1,
+		firstLine: 'new',
+	},
 ];

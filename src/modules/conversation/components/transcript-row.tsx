@@ -11,8 +11,22 @@ type Props = {
 	selection: SelectionState | null;
 };
 
+const ROW_BACKGROUNDS: Readonly<Record<NonNullable<TranscriptRowModel['background']>, string>> = {
+	user: theme.userBackground,
+	code: theme.codeBackground,
+	selected: theme.selectionBackground,
+	addition: theme.diffAdditionBackground,
+	deletion: theme.diffDeletionBackground,
+};
+
+const SEGMENT_BACKGROUNDS: Readonly<Record<NonNullable<TranscriptRowModel['segments'][number]['background']>, string>> =
+	{
+		addition: theme.diffAdditionWordBackground,
+		deletion: theme.diffDeletionWordBackground,
+	};
+
 const backgroundFor = (row: TranscriptRowModel): string | undefined =>
-	row.background === 'user' ? theme.userBackground : row.background === 'code' ? theme.codeBackground : undefined;
+	row.background ? ROW_BACKGROUNDS[row.background] : undefined;
 
 export const TranscriptRow = ({row, rowIndex, selection}: Props) => {
 	const columns = selectionColumnsForRow(selection, rowIndex, stringWidth(rowText(row)));
@@ -25,7 +39,11 @@ export const TranscriptRow = ({row, rowIndex, selection}: Props) => {
 					<Text
 						key={`${row.id}:${segmentIndex}`}
 						color={segment.color ?? toneColor(segment.tone)}
-						{...(segment.selected ? {backgroundColor: theme.selectionBackground} : {})}
+						{...(segment.selected
+							? {backgroundColor: theme.selectionBackground}
+							: segment.background
+								? {backgroundColor: SEGMENT_BACKGROUNDS[segment.background]}
+								: {})}
 						{...(segment.bold ? {bold: true} : {})}
 						{...(segment.dim ? {dimColor: true} : {})}
 						{...(segment.italic ? {italic: true} : {})}

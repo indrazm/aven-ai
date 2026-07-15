@@ -1,5 +1,5 @@
 import {useCallback, useMemo, type RefObject} from 'react';
-import {useInput, usePaste} from 'ink';
+import {useInput, usePaste, type Key} from 'ink';
 import {actionForCommand, routeForCommand} from '../../commands/index.js';
 import type {Suggestion, SuggestionStatus} from '../../composer/index.js';
 import {insertMention, insertText, normalizeInput, workspaceMentionsFor} from '../../composer/index.js';
@@ -7,6 +7,7 @@ import {composerInputIntent} from '../../composer/index.js';
 import {commandSuggestionsFor, useProjectMentions} from '../../composer/index.js';
 import {transcriptInputIntent} from '../../conversation/index.js';
 import type {TranscriptHandle} from '../../conversation/index.js';
+import type {AgentStatus} from '../../agent/index.js';
 import type {OverlayItem} from '../../overlays/index.js';
 import {isMouseInputSequence} from '../../../libs/terminal/index.js';
 import {useAppStore, useAppStoreApi} from '../components/app-provider.js';
@@ -23,6 +24,22 @@ type InputControllerResult = {
 	overlayItems: readonly OverlayItem[];
 };
 
+type ActiveTurnInputAction = 'steer' | 'enqueue';
+
+export const hasActiveTurn = (status: AgentStatus, activeTurnId: string | null): boolean =>
+	Boolean(activeTurnId) || status === 'thinking' || status === 'runningTool' || status === 'waitingPermission';
+
+export const activeTurnInputAction = (
+	value: string,
+	key: Partial<Key>,
+	active: boolean,
+): ActiveTurnInputAction | undefined => {
+	if (!active || !value.trim() || key.ctrl || key.meta || key.super || key.shift) return undefined;
+	if (key.return) return 'steer';
+	if (key.tab) return 'enqueue';
+	return undefined;
+};
+
 export const useAppInput = (
 	transcriptRef: RefObject<TranscriptHandle | null>,
 	runtimeSession: RuntimeSession,
@@ -37,8 +54,6 @@ export const useAppInput = (
 	const suggestionsHidden = useAppStore((state) => state.suggestionsHidden);
 	const suggestionIndex = useAppStore((state) => state.suggestionIndex);
 	const historyIndex = useAppStore((state) => state.historyIndex);
-	const status = useAppStore((state) => state.status);
-	const activeTurnId = useAppStore((state) => state.activeTurnId);
 	const armExit = useQuitController();
 	const overlayController = useOverlayController(connection, workspace);
 	const suggestionsVisible = !overlayController.active && !suggestionsHidden && inputMode === 'prompt';
@@ -59,17 +74,21 @@ export const useAppInput = (
 		const value = selectedCommand?.label ?? enteredValue;
 		const commandRoute = state.inputMode === 'prompt' ? routeForCommand(value) : undefined;
 		const commandAction = state.inputMode === 'prompt' ? actionForCommand(value) : undefined;
-		state.setEditor({value: '', cursor: 0});
-		state.setHistoryIndex(-1);
+		let accepted = true;
 		if (commandRoute) overlayController.open(commandRoute);
 		else if (commandAction === 'newSession') void workspace.startNew();
 		else if (commandAction === 'resumeLastSession') void workspace.resumeLast();
-		else
-			runtimeSession.submit(
+		else {
+			accepted = runtimeSession.submit(
 				value,
 				state.inputMode,
 				state.inputMode === 'prompt' ? workspaceMentionsFor(value, projectMentions.entries) : [],
 			);
+		}
+		if (accepted) {
+			state.setEditor({value: '', cursor: 0});
+			state.setHistoryIndex(-1);
+		}
 	}, [overlayController, projectMentions.entries, runtimeSession, store, workspace]);
 
 	usePaste((text) => {
@@ -119,12 +138,30 @@ export const useAppInput = (
 		}
 
 		if (key.ctrl && input === 'c') {
-			if ((status !== 'idle' && status !== 'error') || activeTurnId) runtimeSession.interrupt();
+			if (hasActiveTurn(actions.status, actions.activeTurnId)) runtimeSession.interrupt();
 			else if (!transcriptRef.current?.clearSelection()) armExit('c');
 			return;
 		}
 
 		if (key.escape && transcriptRef.current?.clearSelection()) return;
+		// Active-turn Enter and Tab intentionally take precedence over autocomplete:
+		// the editor text is a steer/queue payload, while Shift+Enter still reaches
+		// the regular composer intent and inserts a newline.
+		const activeAction = activeTurnInputAction(
+			actions.editor.value,
+			key,
+			hasActiveTurn(actions.status, actions.activeTurnId),
+		);
+		if (activeAction) {
+			const value = normalizeInput(actions.editor.value).trim();
+			const mentions = actions.inputMode === 'prompt' ? workspaceMentionsFor(value, projectMentions.entries) : [];
+			const accepted = runtimeSession[activeAction](value, actions.inputMode, mentions);
+			if (accepted) {
+				actions.setEditor({value: '', cursor: 0});
+				actions.setHistoryIndex(-1);
+			}
+			return;
+		}
 		const intent = composerInputIntent(input, key, {
 			editor,
 			inputMode,

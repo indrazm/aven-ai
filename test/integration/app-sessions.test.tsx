@@ -50,7 +50,7 @@ describe('App project-session flows', () => {
 		unmount();
 	});
 
-	it('blocks session changes while a turn is active', async () => {
+	it('does not execute session commands entered during an active turn', async () => {
 		const runtime = new SessionRuntime(true);
 		const {lastFrame, stdin, unmount} = render(<App runtime={runtime} />);
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -64,7 +64,7 @@ describe('App project-session flows', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(runtime.newSessions).toBe(0);
-		expect(lastFrame()).toContain('Wait for active and queued work to finish');
+		expect(lastFrame()).toContain('❯ /new');
 		unmount();
 	});
 });

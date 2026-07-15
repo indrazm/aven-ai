@@ -13,6 +13,7 @@ import type {
 	ProjectSessionRuntime,
 	ProjectSessionSwitch,
 	ProviderStatus,
+	SteerableAgentRuntime,
 } from './types.js';
 import {DirectCommandExecutor} from './services/direct-command-executor.js';
 import {PromptTurnExecutor} from './services/prompt-turn-executor.js';
@@ -39,7 +40,7 @@ export type AnviaRuntimeOptions = {
 	sessionCatalog?: SessionCatalog;
 };
 
-export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessionRuntime {
+export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessionRuntime, SteerableAgentRuntime {
 	readonly #directCommands: DirectCommandExecutor;
 	readonly #files: FileToolService;
 	readonly #projectRoot: string;
@@ -136,11 +137,17 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 		return messagesFromMemory(await this.#projectSessions.loadMessages());
 	}
 
+	steer(request: SubmitRequest): boolean {
+		if (this.#disposed || request.mode !== 'prompt') return false;
+		return this.#promptTurns.steer(request);
+	}
+
 	async *run(request: SubmitRequest, signal: AbortSignal): AsyncIterable<RuntimeEvent> {
 		this.#assertAvailable();
 		if (this.#running) throw new Error('Another turn is already active.');
 		this.#running = true;
 		this.#projectSessions.beginActivity(request);
+		const steeringSession = request.mode === 'prompt' ? this.#promptTurns.beginSteering() : undefined;
 		try {
 			yield {type: 'turn.started', request};
 			const sessionId = this.#projectSessions.active().id;
@@ -153,9 +160,10 @@ export class AnviaAgentRuntime implements ConfigurableAgentRuntime, ProjectSessi
 			if (this.#providers.state.status !== 'connected' || !model) {
 				throw new Error('No provider connected. Run /connect.');
 			}
-			yield* this.#promptTurns.run(request, signal, model, sessionId);
+			yield* this.#promptTurns.run(request, signal, model, sessionId, steeringSession!);
 			yield* this.#completeSessionTurn(request.id);
 		} finally {
+			if (steeringSession) this.#promptTurns.endSteering(steeringSession);
 			this.#running = false;
 		}
 	}

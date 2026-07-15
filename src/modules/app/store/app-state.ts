@@ -8,6 +8,7 @@ export type AppStoreState = {
 	messages: UiMessage[];
 	status: AgentStatus;
 	activeTurnId: string | null;
+	streamingAssistantId: string | null;
 	queuedRequests: SubmitRequest[];
 	editor: EditorState;
 	inputMode: InputMode;

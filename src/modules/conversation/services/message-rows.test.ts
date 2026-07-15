@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import stringWidth from 'string-width';
 import type {AssistantMessage, ToolMessage} from '../types.js';
 import {demoMessages} from '../fixtures.js';
-import {messageToRows, messagesToRows, rowText, wrapSegments} from './message-rows.js';
+import {completedStreamingLines, messageToRows, messagesToRows, rowText, wrapSegments} from './message-rows.js';
 
 const toolMessage = (status: ToolMessage['status'], lineCount: number): ToolMessage => ({
 	id: `tool-${status}`,
@@ -26,7 +26,7 @@ describe('transcript row model', () => {
 		expect(new Set(rows.map((row) => row.messageKind))).toEqual(
 			new Set(['user', 'assistant', 'tool', 'system', 'diff']),
 		);
-		expect(rows.some((row) => rowText(row).includes('source/server.ts'))).toBe(true);
+		expect(rows.some((row) => rowText(row).includes('Added 1 line, removed 1 line'))).toBe(true);
 	});
 
 	it('renders fenced code with language-aware segment colors', () => {
@@ -51,9 +51,38 @@ describe('transcript row model', () => {
 		expect(rows.every((row) => stringWidth(rowText(row)) <= 28)).toBe(true);
 	});
 
+	it('renders only completed source lines while an assistant block is streaming', () => {
+		const message: AssistantMessage = {
+			id: 'assistant-streaming',
+			kind: 'assistant',
+			variant: 'text',
+			content: 'Complete line.\n```ts\nconst complete = true;\nconst partial',
+		};
+
+		expect(completedStreamingLines('partial')).toBe('');
+		expect(completedStreamingLines('complete\npartial')).toBe('complete\n');
+		expect(completedStreamingLines('complete\r\npartial')).toBe('complete\r\n');
+		expect(messageToRows({...message, content: 'partial'}, 80, false, true)).toEqual([]);
+
+		const streamingRows = messageToRows(message, 80, false, true);
+		const streamingText = streamingRows.map((row) => rowText(row)).join('\n');
+		expect(streamingText).toContain('Complete line.');
+		expect(streamingText).toContain('const complete = true;');
+		expect(streamingText).not.toContain('const partial');
+
+		const completedText = messageToRows(message, 80)
+			.map((row) => rowText(row))
+			.join('\n');
+		expect(completedText).toContain('const partial');
+	});
+
 	it('hides successful command output by default and reveals it on expansion', () => {
 		const message = toolMessage('success', 8);
-		expect(messageToRows(message, 80).map((row) => rowText(row))).toEqual(['✓ ExecCommand  print output']);
+		const collapsed = messageToRows(message, 80);
+		expect(collapsed.map((row) => rowText(row))).toEqual(['✓ ExecCommand  print output']);
+		expect(collapsed[0]?.segments).toEqual(
+			expect.arrayContaining([expect.objectContaining({text: 'ExecCommand', tone: 'tool', bold: true})]),
+		);
 
 		const expanded = messageToRows(message, 80, true);
 		expect(expanded.map((row) => rowText(row))).toEqual([
@@ -145,7 +174,7 @@ describe('transcript row model', () => {
 		expect(rows.map((row) => rowText(row))).toEqual(['✓ Read  /workspace/one.ts', '✓ Read  /workspace/two.ts']);
 	});
 
-	it('does not add blank rows above or below command activity', () => {
+	it('separates assistant text from command activity while keeping tool calls together', () => {
 		const read = (id: string): ToolMessage => ({
 			id,
 			kind: 'tool',
@@ -155,11 +184,18 @@ describe('transcript row model', () => {
 			group: 'read',
 		});
 		const command = {...toolMessage('success', 0), id: 'command'};
+		const text: AssistantMessage = {
+			id: 'assistant-before-tools',
+			kind: 'assistant',
+			variant: 'text',
+			content: 'I will inspect the project.',
+		};
 
-		const rows = messagesToRows([read('before'), command, read('after')], 80);
+		const rows = messagesToRows([text, command, read('after')], 80);
 
 		expect(rows.map((row) => rowText(row))).toEqual([
-			'✓ Read  /workspace/before.ts',
+			'● I will inspect the project.',
+			'',
 			'✓ ExecCommand  print output',
 			'✓ Read  /workspace/after.ts',
 		]);

@@ -4,6 +4,7 @@ export const selectSession = (state: AppStore) => ({
 	messages: state.messages,
 	status: state.status,
 	activeTurnId: state.activeTurnId,
+	streamingAssistantId: state.streamingAssistantId,
 	queuedRequests: state.queuedRequests,
 });
 

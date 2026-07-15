@@ -27,12 +27,17 @@ export type RuntimeEvent =
 	| {type: 'message.appended'; message: UiMessage}
 	| {type: 'message.replaced'; message: UiMessage}
 	| {type: 'assistant.delta'; messageId: string; delta: string}
+	| {type: 'assistant.completed'; messageId: string}
 	| {type: 'turn.completed'; turnId: string}
 	| {type: 'turn.failed'; turnId: string; error: string};
 
 export interface AgentRuntime {
 	run(request: SubmitRequest, signal: AbortSignal): AsyncIterable<RuntimeEvent>;
 	dispose(): void | Promise<void>;
+}
+
+export interface SteerableAgentRuntime extends AgentRuntime {
+	steer(request: SubmitRequest): boolean;
 }
 
 export interface ConfigurableAgentRuntime extends AgentRuntime {
@@ -82,3 +87,6 @@ export const isProjectSessionRuntime = (runtime: AgentRuntime): runtime is Proje
 		typeof candidate.switchSession === 'function'
 	);
 };
+
+export const isSteerableRuntime = (runtime: AgentRuntime): runtime is SteerableAgentRuntime =>
+	typeof (runtime as Partial<SteerableAgentRuntime>).steer === 'function';

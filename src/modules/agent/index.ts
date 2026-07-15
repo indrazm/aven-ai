@@ -4,6 +4,7 @@ export {buildSystemPrompt, type SystemPromptContext} from './prompts/system.js';
 export {
 	isConfigurableRuntime,
 	isProjectSessionRuntime,
+	isSteerableRuntime,
 	type AgentRuntime,
 	type AgentStatus,
 	type ConfigurableAgentRuntime,
@@ -15,6 +16,7 @@ export {
 	type ProviderCredentials,
 	type ProviderStatus,
 	type RuntimeEvent,
+	type SteerableAgentRuntime,
 	type SubmitRequest,
 	type WorkspaceMention,
 } from './types.js';

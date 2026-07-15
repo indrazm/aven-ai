@@ -33,8 +33,8 @@ const message: UserMessage = {
 const metrics = {width: 40, height: 2, left: 3, top: 4, hasMeasured: true};
 
 const Harness = ({handle}: {handle: React.RefObject<TranscriptHandle | null>}) => {
-	useTranscriptController([message], metrics, handle);
-	return <Text>transcript</Text>;
+	const {selection} = useTranscriptController([message], metrics, handle);
+	return <Text>{selection ? 'selected' : 'clear'}</Text>;
 };
 
 const mouseEvent = (type: MouseEvent['type'], x: number, timestamp: number): MouseEvent => ({
@@ -60,18 +60,25 @@ describe('transcript mouse selection', () => {
 
 	it('copies a drag selection when the mouse is released', async () => {
 		const handle = createRef<TranscriptHandle>();
-		const {unmount} = render(<Harness handle={handle} />);
+		const {lastFrame, unmount} = render(<Harness handle={handle} />);
 		await vi.waitFor(() => expect(terminal.listeners.size).toBe(1));
 
 		await act(async () => {
 			emitMouse(mouseEvent('down', 2, 100));
 			emitMouse(mouseEvent('move', 6, 110));
-			expect(terminal.copyText).not.toHaveBeenCalled();
+		});
+		expect(terminal.copyText).not.toHaveBeenCalled();
+		expect(handle.current?.hasSelection()).toBe(true);
+		expect(lastFrame()).toContain('selected');
+
+		await act(async () => {
 			emitMouse(mouseEvent('up', 6, 120));
 		});
 
 		expect(terminal.copyText).toHaveBeenCalledOnce();
 		expect(terminal.copyText).toHaveBeenCalledWith('hello');
+		expect(handle.current?.hasSelection()).toBe(false);
+		expect(lastFrame()).toContain('clear');
 		unmount();
 	});
 
@@ -87,6 +94,7 @@ describe('transcript mouse selection', () => {
 		});
 
 		expect(terminal.copyText).toHaveBeenLastCalledWith('hello');
+		expect(handle.current?.hasSelection()).toBe(false);
 		unmount();
 	});
 });

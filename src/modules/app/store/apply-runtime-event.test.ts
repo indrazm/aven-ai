@@ -1,4 +1,5 @@
 import {describe, expect, it} from 'vitest';
+import {messagesToRows} from '../../conversation/services/message-rows.js';
 import {createAppStore} from './create-app-store.js';
 
 describe('application store runtime events', () => {
@@ -10,7 +11,10 @@ describe('application store runtime events', () => {
 			request: {id: 'turn-1', content: 'hello', mode: 'prompt'},
 		});
 		actions.applyRuntimeEvent({type: 'assistant.delta', messageId: 'answer-1', delta: 'Hello'});
+		expect(store.getState().streamingAssistantId).toBe('answer-1');
 		actions.applyRuntimeEvent({type: 'assistant.delta', messageId: 'answer-1', delta: ' world'});
+		actions.applyRuntimeEvent({type: 'assistant.completed', messageId: 'answer-1'});
+		expect(store.getState().streamingAssistantId).toBeNull();
 		actions.applyRuntimeEvent({type: 'turn.completed', turnId: 'turn-1'});
 
 		expect(store.getState()).toMatchObject({status: 'idle', activeTurnId: null});
@@ -20,11 +24,22 @@ describe('application store runtime events', () => {
 		]);
 	});
 
-	it('does not create transcript rows for whitespace-only assistant turns', () => {
+	it('preserves whitespace deltas without creating transcript rows', () => {
 		const store = createAppStore();
 		store.getState().applyRuntimeEvent({type: 'assistant.delta', messageId: 'empty-answer', delta: '\n\n'});
 
-		expect(store.getState().messages).toEqual([]);
+		expect(store.getState().messages).toMatchObject([{kind: 'assistant', content: '\n\n'}]);
+		expect(messagesToRows(store.getState().messages, 80, false, store.getState().streamingAssistantId)).toEqual([]);
+	});
+
+	it('only completes the matching streaming assistant block', () => {
+		const store = createAppStore();
+		store.getState().applyRuntimeEvent({type: 'assistant.delta', messageId: 'answer', delta: 'complete\npartial'});
+		store.getState().applyRuntimeEvent({type: 'assistant.completed', messageId: 'stale'});
+		expect(store.getState().streamingAssistantId).toBe('answer');
+
+		store.getState().applyRuntimeEvent({type: 'assistant.completed', messageId: 'answer'});
+		expect(store.getState().streamingAssistantId).toBeNull();
 	});
 
 	it('keeps app instances isolated', () => {
@@ -59,6 +74,7 @@ describe('application store runtime events', () => {
 		expect(store.getState()).toMatchObject({
 			status: 'idle',
 			activeTurnId: null,
+			streamingAssistantId: null,
 			queuedRequests: [],
 			editor: {value: '', cursor: 0},
 			overlay: null,
@@ -84,6 +100,7 @@ describe('application store runtime events', () => {
 		store.getState().applyRuntimeEvent({type: 'turn.failed', turnId: 'turn', error: 'runtime unavailable'});
 
 		expect(store.getState()).toMatchObject({status: 'error', activeTurnId: null});
+		expect(store.getState().streamingAssistantId).toBeNull();
 		expect(store.getState().messages.find((message) => message.id === 'tool')).toMatchObject({status: 'success'});
 		expect(store.getState().messages.at(-1)).toMatchObject({
 			kind: 'system',
@@ -92,6 +109,21 @@ describe('application store runtime events', () => {
 		});
 		store.getState().recover();
 		expect(store.getState()).toMatchObject({status: 'idle', activeTurnId: null});
+	});
+
+	it('reveals already received partial text when interrupted', () => {
+		const store = createAppStore();
+		store.getState().applyRuntimeEvent({
+			type: 'turn.started',
+			request: {id: 'turn', content: 'hello', mode: 'prompt'},
+		});
+		store.getState().applyRuntimeEvent({type: 'assistant.delta', messageId: 'answer', delta: 'partial'});
+		store.getState().interrupt();
+
+		expect(store.getState().streamingAssistantId).toBeNull();
+		expect(store.getState().messages).toEqual(
+			expect.arrayContaining([expect.objectContaining({id: 'answer', content: 'partial'})]),
+		);
 	});
 
 	it('never rewrites multiple transcript blocks when a runtime accidentally repeats an id', () => {

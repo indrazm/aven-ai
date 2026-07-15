@@ -24,6 +24,15 @@ describe('terminal selection', () => {
 		]);
 	});
 
+	it('preserves word-diff backgrounds while marking the selected slice', () => {
+		const result = splitSegmentsForSelection([{text: 'rename', background: 'addition'}], [2, 5]);
+		expect(result).toEqual([
+			{text: 're', background: 'addition'},
+			{text: 'nam', background: 'addition', selected: true},
+			{text: 'e', background: 'addition'},
+		]);
+	});
+
 	it('uses terminal columns for emoji, CJK, and combining graphemes', () => {
 		const unicodeRow: TranscriptRow = {
 			...row,

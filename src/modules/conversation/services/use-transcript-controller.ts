@@ -30,11 +30,15 @@ export const useTranscriptController = (
 	metrics: UseBoxMetricsResult,
 	handleRef: ForwardedRef<TranscriptHandle>,
 	expanded = false,
+	streamingAssistantId: string | null = null,
 ): Result => {
 	const {subscribeMouse, copyText} = useTerminalController();
 	const width = Math.max(12, metrics.width || 80);
 	const rowCache = useRef(new TranscriptRowCache());
-	const rows = useMemo(() => rowCache.current.rowsFor(messages, width, expanded), [expanded, messages, width]);
+	const rows = useMemo(
+		() => rowCache.current.rowsFor(messages, width, expanded, streamingAssistantId),
+		[expanded, messages, streamingAssistantId, width],
+	);
 	const [scrollTop, setScrollTop] = useState(0);
 	// A terminal input chunk can contain several wheel events before React renders again.
 	const scrollTopRef = useRef(0);
@@ -88,9 +92,10 @@ export const useTranscriptController = (
 			const value = selectedText(rows, next);
 			if (!value) return false;
 			copyText(value);
+			commitSelection(null);
 			return true;
 		},
-		[copyText, rows],
+		[commitSelection, copyText, rows],
 	);
 
 	const copySelection = useCallback(() => {
