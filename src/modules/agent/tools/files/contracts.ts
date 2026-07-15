@@ -4,7 +4,10 @@ const agentGuidanceSchema = z.string().optional().describe('Internal recovery gu
 
 export const readInputSchema = z
 	.object({
-		file_path: z.string().min(1).describe('Absolute path to the text file to read.'),
+		file_path: z
+			.string()
+			.min(1)
+			.describe('Repository-relative path (preferred) or absolute path to the text file to read.'),
 		offset: z.number().int().positive().optional().describe('One-based line number to start reading from.'),
 		limit: z.number().int().positive().optional().describe('Maximum number of lines to return (defaults to 2000).'),
 	})
@@ -12,7 +15,10 @@ export const readInputSchema = z
 
 export const editInputSchema = z
 	.object({
-		file_path: z.string().min(1).describe('Absolute path to the text file to edit.'),
+		file_path: z
+			.string()
+			.min(1)
+			.describe('Repository-relative path (preferred) or absolute path to the text file to edit.'),
 		old_string: z.string().describe('Exact text to replace. Use an empty string only when creating a new file.'),
 		new_string: z.string().describe('Replacement text.'),
 		replace_all: z.boolean().optional().describe('Replace every exact match instead of requiring a unique match.'),
@@ -21,7 +27,10 @@ export const editInputSchema = z
 
 export const writeInputSchema = z
 	.object({
-		file_path: z.string().min(1).describe('Absolute path to the text file to write.'),
+		file_path: z
+			.string()
+			.min(1)
+			.describe('Repository-relative path (preferred) or absolute path to the text file to write.'),
 		content: z.string().describe('Complete file content.'),
 	})
 	.strict();

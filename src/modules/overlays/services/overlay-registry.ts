@@ -20,7 +20,7 @@ const items: Record<OverlayRoute, readonly OverlayItem[]> = {
 		{label: 'Ctrl+C', description: 'interrupt; press twice while idle to exit'},
 		{label: 'Ctrl+D', description: 'press twice on empty input to exit'},
 		{label: '! on empty input', description: 'enter direct PTY command mode'},
-		{label: 'Mouse', description: 'wheel scroll; drag/double/triple click selects'},
+		{label: 'Mouse', description: 'wheel scroll; drag/double/triple click selects and copies'},
 	],
 	sessions: [],
 	connect: [],

@@ -67,7 +67,7 @@ export class PromptTurnExecutor {
 		const streamedTurn = agent
 			.session(sessionId, {metadata: {projectRoot: this.#projectRoot}})
 			.prompt(promptMessageFor(this.#projectRoot, request))
-			.withToolConcurrency(1)
+			.withToolConcurrency(8)
 			.stream();
 		const stream = streamedTurn[Symbol.asyncIterator]();
 		const stop = () => {

@@ -12,17 +12,17 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0
       '@anvia/anthropic':
-        specifier: ^0.3.14
-        version: 0.3.14(@anvia/core@0.13.0)(zod@4.4.3)
+        specifier: ^0.3.15
+        version: 0.3.15(@anvia/core@0.13.3)(zod@4.4.3)
       '@anvia/core':
-        specifier: ^0.13.0
-        version: 0.13.0
+        specifier: ^0.13.3
+        version: 0.13.3
       '@anvia/memory-sqlite':
-        specifier: ^0.2.2
-        version: 0.2.2(@anvia/core@0.13.0)
+        specifier: ^0.2.3
+        version: 0.2.3(@anvia/core@0.13.3)
       '@anvia/openai':
-        specifier: ^0.3.17
-        version: 0.3.17(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)
+        specifier: ^0.3.21
+        version: 0.3.21(@anvia/core@0.13.3)(ws@8.21.0)(zod@4.4.3)
       '@inkjs/ui':
         specifier: ^2.0.0
         version: 2.0.0(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))
@@ -133,21 +133,21 @@ packages:
       zod:
         optional: true
 
-  '@anvia/anthropic@0.3.14':
-    resolution: {integrity: sha512-Xy+qxoWnGQVGpwi1ZWiklGyKFmARSiFOR5NKl1j6Vz0RfHqjHnBYdwS7QBZPSQogo2ditwOzczQYmgJW3f379g==}
+  '@anvia/anthropic@0.3.15':
+    resolution: {integrity: sha512-1gb/oYYxlPCoOzQ9eSiA2yQ49aLsS2N/ejmxjbeASV3iVUko4AY2iFXqCzD3Pqa8M9/kUy02aJFoSKkXPq0Lzg==}
     peerDependencies:
       '@anvia/core': '>=0.7.1 <1.0.0'
 
-  '@anvia/core@0.13.0':
-    resolution: {integrity: sha512-zMXK0ZGzNwner67/+yVjJyobrwnWfZ240SxbMdhxBVYRVl+otWJ63vZJRu4Nn295ySzoew9+3oO3ZXQqMnae5Q==}
+  '@anvia/core@0.13.3':
+    resolution: {integrity: sha512-JTMLw3avw1/7+gqsrTdKHqqDNgGV82ogJfr52JriQiXbEo7CHglplgtFR30zDHBlbdSeFLRo6LAV6lJ+YmLAWQ==}
 
-  '@anvia/memory-sqlite@0.2.2':
-    resolution: {integrity: sha512-u2lr9Joh5/nS2DTS9EZeU9FeBDkB30veyl3qOmJMlRuBeNSRuubJe1FD8gBTP9DpH+O8+ocqGxEIPy1ZYy4+eQ==}
+  '@anvia/memory-sqlite@0.2.3':
+    resolution: {integrity: sha512-nQQSGNqaUkkbGyRlN4pwnaVIm9VlTzNbk8ub6uFoN93WM1yIURfYxVZp73g3W9vVm52Chv7tXkHkC7tYRqzGfQ==}
     peerDependencies:
       '@anvia/core': '>=0.13.0 <1.0.0'
 
-  '@anvia/openai@0.3.17':
-    resolution: {integrity: sha512-LHDRJGV8zNjvwLnzgrAsFsKj1RR6bRPfoP+D6e21zzsXfepzrkurTsKXK0nFEEqSr5YzwZ/OrC9D4V7sMueP6g==}
+  '@anvia/openai@0.3.21':
+    resolution: {integrity: sha512-R+mcNc43S74zMTSVorpj5VfkHRHO9yfLZzm33jSBk9tg2hY3N7x7sNs6f77i3n3NK7rFjOJsDlWYqw29qv2VwQ==}
     peerDependencies:
       '@anvia/core': '>=0.7.1 <1.0.0'
 
@@ -1632,8 +1632,8 @@ packages:
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
 
-  hono@4.12.29:
-    resolution: {integrity: sha512-1hNiRjawYrLq/4m3DQQjPGFg0VZkk4RjQJDff/excI6Dm9BiL75qxGrd7/c6YOxPdq6AscP3LiXhQ6fKFC1Waw==}
+  hono@4.12.30:
+    resolution: {integrity: sha512-emn+JoJjrN9YTpRDS5it/UI2SO9BAE37T6I3d963RxcZ81G9A4pr2SZTEiiaiKbzx+NKRg5BZ89fCL7gCJCUog==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -1983,8 +1983,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.15:
-    resolution: {integrity: sha512-y7Wygv/7mEOvxTuEQDB8StXdMRBWf1kR/tlhAzBRUFkB2jfcLOAxO/SHmOO2zgz1pVgK29/kyupn059/bCHdjA==}
+  nanoid@3.3.16:
+    resolution: {integrity: sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -2144,8 +2144,8 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
-  postcss@8.5.16:
-    resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
+  postcss@8.5.19:
+    resolution: {integrity: sha512-Mz8SaolMd8nB+G13WkORcxQKHZ/NE4xXevtkJHVuG+guo9/wYKlIMTKAqGdEmYOXR2ijPjTYNHssizdaVSUNdQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -2657,14 +2657,14 @@ snapshots:
     optionalDependencies:
       zod: 4.4.3
 
-  '@anvia/anthropic@0.3.14(@anvia/core@0.13.0)(zod@4.4.3)':
+  '@anvia/anthropic@0.3.15(@anvia/core@0.13.3)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.110.0(zod@4.4.3)
-      '@anvia/core': 0.13.0
+      '@anvia/core': 0.13.3
     transitivePeerDependencies:
       - zod
 
-  '@anvia/core@0.13.0':
+  '@anvia/core@0.13.3':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
       pdfjs-dist: 6.1.200
@@ -2675,13 +2675,13 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@anvia/memory-sqlite@0.2.2(@anvia/core@0.13.0)':
+  '@anvia/memory-sqlite@0.2.3(@anvia/core@0.13.3)':
     dependencies:
-      '@anvia/core': 0.13.0
+      '@anvia/core': 0.13.3
 
-  '@anvia/openai@0.3.17(@anvia/core@0.13.0)(ws@8.21.0)(zod@4.4.3)':
+  '@anvia/openai@0.3.21(@anvia/core@0.13.3)(ws@8.21.0)(zod@4.4.3)':
     dependencies:
-      '@anvia/core': 0.13.0
+      '@anvia/core': 0.13.3
       openai: 6.46.0(ws@8.21.0)(zod@4.4.3)
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -3234,9 +3234,9 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@hono/node-server@1.19.14(hono@4.12.29)':
+  '@hono/node-server@1.19.14(hono@4.12.30)':
     dependencies:
-      hono: 4.12.29
+      hono: 4.12.30
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -3306,7 +3306,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.29)
+      '@hono/node-server': 1.19.14(hono@4.12.30)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -3316,7 +3316,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
-      hono: 4.12.29
+      hono: 4.12.30
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -4165,7 +4165,7 @@ snapshots:
 
   highlight.js@10.7.3: {}
 
-  hono@4.12.29: {}
+  hono@4.12.30: {}
 
   html-escaper@2.0.2: {}
 
@@ -4454,7 +4454,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.15: {}
+  nanoid@3.3.16: {}
 
   natural-compare@1.4.0: {}
 
@@ -4566,9 +4566,9 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
-  postcss@8.5.16:
+  postcss@8.5.19:
     dependencies:
-      nanoid: 3.3.15
+      nanoid: 3.3.16
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -4906,7 +4906,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.5
-      postcss: 8.5.16
+      postcss: 8.5.19
       rolldown: 1.1.5
       tinyglobby: 0.2.17
     optionalDependencies:

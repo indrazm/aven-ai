@@ -278,14 +278,15 @@ describe('App shell and composer', () => {
 		unmount();
 	});
 
-	it('expands collapsed tool output while transcript mode is active', async () => {
+	it('reveals hidden successful command output while transcript mode is active', async () => {
 		const {lastFrame, stdin, unmount} = render(<App runtime={new ToolOutputRuntime()} />);
 		stdin.write('run');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		stdin.write('\r');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(lastFrame()).toContain('… +9 lines (ctrl+o to expand)');
+		expect(lastFrame()).not.toContain('tool output 1');
 		expect(lastFrame()).not.toContain('tool output 12');
+		expect(lastFrame()).not.toContain('ctrl+o to expand');
 
 		stdin.write('\u000f');
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -294,8 +295,9 @@ describe('App shell and composer', () => {
 
 		stdin.write('\u000f');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(lastFrame()).toContain('… +9 lines (ctrl+o to expand)');
+		expect(lastFrame()).not.toContain('tool output 1');
 		expect(lastFrame()).not.toContain('tool output 12');
+		expect(lastFrame()).not.toContain('ctrl+o to expand');
 		unmount();
 	});
 });

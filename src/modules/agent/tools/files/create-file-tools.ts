@@ -13,7 +13,7 @@ export const createFileTools = (service: FileToolService, signal: AbortSignal) =
 	createTool({
 		name: 'Read',
 		description:
-			'Read a UTF-8 or UTF-16LE text file by absolute path with compact line-numbered output. Read files before changing them.',
+			'Read a UTF-8 or UTF-16LE text file by repository-relative or absolute path with compact line-numbered output. Read files before changing them.',
 		input: readInputSchema,
 		output: readResultSchema,
 		execute: (input) => service.read(input, signal),

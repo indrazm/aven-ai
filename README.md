@@ -24,7 +24,7 @@ On first launch, run `/connect` to choose a provider and add its API key.
 - File reading, editing, and writing with inline diffs
 - PTY-backed shell command execution
 - Project-scoped sessions and searchable history
-- Mouse scrolling, text selection, and clipboard support
+- Mouse scrolling with drag, word, and line selections that copy automatically
 - Multiple model providers, including OpenAI, Anthropic, OpenRouter, DeepSeek, GitHub Models, and more
 
 ## Usage

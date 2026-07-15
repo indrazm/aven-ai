@@ -71,6 +71,7 @@ const projectInstructionLines = ({files, omittedPaths, warnings}: ProjectInstruc
 const lexaInstructionLines = ({skill, version}: SystemPromptContext['lexa']): string[] => [
 	`<lexa version=${xmlAttribute(version)}>`,
 	'Aven manages this required Lexa installation and exposes `lexa` on the command PATH. Do not install or upgrade Lexa during an agent run. Core safety and tool contracts take priority; explicit user instructions override the packaged Lexa guidance.',
+	'Lexa reverse-dependency syntax is `lexa trace-deps <path> --reverse` (or `-r`). Add `--transitive` (or `-t`) only for recursive impact. `trace-deps` does not accept `--direction depended_by`. After any CLI usage error, inspect `lexa <command> --help` before retrying.',
 	'<skill><![CDATA[',
 	cdata(skill),
 	']]></skill>',

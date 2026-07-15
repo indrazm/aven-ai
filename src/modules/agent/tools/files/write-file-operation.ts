@@ -24,7 +24,7 @@ export const writeFileOperation = async (
 ): Promise<WriteResult> => {
 	let path = input.file_path;
 	try {
-		path = validatedPath(input.file_path);
+		path = validatedPath(input.file_path, context.projectRoot);
 		throwIfAborted(signal);
 		await mkdir(dirname(path), {recursive: true});
 		const exists = await pathExists(path);
@@ -61,13 +61,13 @@ export const writeFileOperation = async (
 		return {
 			status: 'success',
 			tool: 'Write',
-			file_path: displayPath(path),
+			file_path: displayPath(path, context.projectRoot),
 			operation: exists ? 'update' : 'create',
 			operation_id: operationId,
 			message: exists ? 'Updated file.' : 'Created file.',
 		};
 	} catch (error) {
 		if (signal.aborted) throw signal.reason ?? error;
-		return fileToolError('Write', path, error) as WriteResult;
+		return fileToolError('Write', path, error, context.projectRoot) as WriteResult;
 	}
 };

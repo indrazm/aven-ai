@@ -25,7 +25,7 @@ export const editFileOperation = async (
 ): Promise<EditResult> => {
 	let path = input.file_path;
 	try {
-		path = validatedPath(input.file_path);
+		path = validatedPath(input.file_path, context.projectRoot);
 		if (path.toLowerCase().endsWith('.ipynb')) {
 			throw new FileToolValidationError('Notebook files are not supported by Edit.');
 		}
@@ -70,14 +70,14 @@ export const editFileOperation = async (
 		return {
 			status: 'success',
 			tool: 'Edit',
-			file_path: displayPath(path),
+			file_path: displayPath(path, context.projectRoot),
 			replacements,
 			operation_id: operationId,
 			message: `Replaced ${replacements} occurrence${replacements === 1 ? '' : 's'}.`,
 		};
 	} catch (error) {
 		if (signal.aborted) throw signal.reason ?? error;
-		return fileToolError('Edit', path, error) as EditResult;
+		return fileToolError('Edit', path, error, context.projectRoot) as EditResult;
 	}
 };
 
@@ -108,7 +108,7 @@ const createWithEdit = async (
 	return {
 		status: 'success',
 		tool: 'Edit',
-		file_path: displayPath(path),
+		file_path: displayPath(path, context.projectRoot),
 		replacements: 1,
 		operation_id: operationId,
 		message: 'Created file with Edit.',

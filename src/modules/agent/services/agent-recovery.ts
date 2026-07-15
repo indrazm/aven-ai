@@ -2,6 +2,7 @@ import {createHook, createMiddleware} from '@anvia/core';
 
 export const FAILURE_WARNING_THRESHOLD = 3;
 export const FAILURE_STOP_THRESHOLD = 5;
+export const GLOBAL_FAILURE_STOP_THRESHOLD = 10;
 export const LOOP_WARNING_THRESHOLD = 3;
 export const LOOP_STOP_THRESHOLD = 5;
 
@@ -12,8 +13,14 @@ type LoopMatch = {
 	repetitions: number;
 };
 
+type FailureStreak = {
+	signature: string;
+	count: number;
+};
+
 type RecoveryState = {
-	failures: Map<string, number>;
+	failure: FailureStreak | undefined;
+	consecutiveFailures: number;
 	toolCalls: string[];
 	loopsByCall: Map<string, LoopMatch>;
 	stopReason?: string;
@@ -97,13 +104,23 @@ const failureReason = (toolName: string, result: string): string | undefined => 
 	return undefined;
 };
 
-const failureGuidance = (toolName: string, reason: string, failureCount: number): string => {
-	const attemptsRemaining = Math.max(0, FAILURE_STOP_THRESHOLD - failureCount);
+const failureGuidance = (
+	toolName: string,
+	reason: string,
+	failureCount: number,
+	consecutiveFailures: number,
+): string => {
+	const attemptsRemaining = Math.max(
+		0,
+		Math.min(FAILURE_STOP_THRESHOLD - failureCount, GLOBAL_FAILURE_STOP_THRESHOLD - consecutiveFailures),
+	);
 	const warning =
 		failureCount >= FAILURE_WARNING_THRESHOLD
 			? 'Do not repeat the same call unchanged; inspect the error and choose a materially different approach.'
-			: 'Inspect the error, correct the arguments or approach, and retry only when there is a concrete reason it should succeed.';
-	return `${toolName} failed (${failureCount}/${FAILURE_STOP_THRESHOLD}): ${reason} ${warning} Attempts remaining before this run stops: ${attemptsRemaining}.`;
+			: consecutiveFailures >= FAILURE_WARNING_THRESHOLD
+				? 'Several different calls have failed without a success; inspect their errors instead of continuing to guess.'
+				: 'Inspect the error, correct the arguments or approach, and retry only when there is a concrete reason it should succeed.';
+	return `${toolName} failed (${failureCount}/${FAILURE_STOP_THRESHOLD}): ${reason} Consecutive tool failures without a success: ${consecutiveFailures}/${GLOBAL_FAILURE_STOP_THRESHOLD}. ${warning} Attempts remaining before this run stops: ${attemptsRemaining}.`;
 };
 
 const loopGuidance = ({patternLength, repetitions}: LoopMatch): string =>
@@ -117,29 +134,35 @@ const guidedResult = (toolName: string, result: string, guidance: string): strin
 
 export const createAgentRecovery = () => {
 	const state: RecoveryState = {
-		failures: new Map(),
+		failure: undefined,
+		consecutiveFailures: 0,
 		toolCalls: [],
 		loopsByCall: new Map(),
 	};
 
 	const middleware = createMiddleware({
-		onToolOutput: ({toolName, result, internalCallId}) => {
+		onToolOutput: ({toolName, args, result, internalCallId}) => {
 			const loop = state.loopsByCall.get(internalCallId);
 			state.loopsByCall.delete(internalCallId);
 			const reason = failureReason(toolName, result);
 			if (!reason && !loop) {
-				state.failures.delete(toolName);
+				state.failure = undefined;
+				state.consecutiveFailures = 0;
 				return undefined;
 			}
 
-			const failureCount = (state.failures.get(toolName) ?? 0) + 1;
-			state.failures.set(toolName, failureCount);
+			const signature = canonicalToolSignature(toolName, args);
+			const failureCount = state.failure?.signature === signature ? state.failure.count + 1 : 1;
+			state.failure = {signature, count: failureCount};
+			state.consecutiveFailures += 1;
 			if (failureCount >= FAILURE_STOP_THRESHOLD && !state.stopReason) {
-				state.stopReason = `${toolName} failed ${failureCount} consecutive times.`;
+				state.stopReason = `${toolName} failed ${failureCount} consecutive times with the same arguments.`;
+			} else if (state.consecutiveFailures >= GLOBAL_FAILURE_STOP_THRESHOLD && !state.stopReason) {
+				state.stopReason = `Tool calls failed ${state.consecutiveFailures} consecutive times without a success.`;
 			}
 			const guidance = [
 				loop ? loopGuidance(loop) : '',
-				failureGuidance(toolName, reason ?? 'The repeated call was skipped.', failureCount),
+				failureGuidance(toolName, reason ?? 'The repeated call was skipped.', failureCount, state.consecutiveFailures),
 			]
 				.filter(Boolean)
 				.join(' ');

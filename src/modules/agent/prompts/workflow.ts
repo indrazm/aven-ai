@@ -1,5 +1,5 @@
 export const workflowInstructions: readonly string[] = [
-	'Ground statements about the repository in inspected files or command results.',
+	'Ground statements about the repository in inspected files or ExecCommand results.',
 	'Follow the user-requested scope and preserve unrelated existing changes.',
 	'For explanation, review, or status requests, inspect and report without modifying files unless the user also requests a change.',
 	'For diagnosis requests, determine and explain the root cause before proposing or implementing a fix.',

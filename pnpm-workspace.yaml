@@ -8,7 +8,10 @@ allowBuilds:
   esbuild: true
   node-pty: true
 minimumReleaseAgeExclude:
-  - '@anvia/openai@0.3.17'
+  - '@anvia/anthropic@0.3.15'
+  - '@anvia/core@0.13.3'
+  - '@anvia/memory-sqlite@0.2.3'
+  - '@anvia/openai@0.3.21'
   - lexa-index-darwin-arm64@0.10.0
   - lexa-index-darwin-x64@0.10.0
   - lexa-index-linux-x64@0.10.0

@@ -11,8 +11,8 @@ export type {FileMutation} from './mutation-journal.js';
 export class FileToolService {
 	readonly #context: FileToolContext;
 
-	constructor(cache = new FileStateCache(), mutations = new MutationJournal()) {
-		this.#context = {cache, mutations};
+	constructor(projectRoot: string, cache = new FileStateCache(), mutations = new MutationJournal()) {
+		this.#context = {cache, mutations, projectRoot};
 	}
 
 	read(input: ReadInput, signal: AbortSignal): Promise<ReadResult> {
