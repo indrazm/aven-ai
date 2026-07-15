@@ -1,5 +1,5 @@
 import {render} from 'ink-testing-library';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {App} from '../../src/modules/app/index.js';
 import {RecoveringRuntime, SupersededRuntime} from '../support/runtime-fakes.js';
 
@@ -32,7 +32,7 @@ describe('App turn lifecycle', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		stdin.write('second');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		stdin.write('\r');
+		stdin.write('\t');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(lastFrame()).toContain('queued · second');
 
@@ -59,10 +59,11 @@ describe('App turn lifecycle', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		stdin.write('\r');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(runtime.runs).toBe(2);
+		expect(runtime.runs).toBe(1);
+		expect(lastFrame()).toContain('queued · second');
 
 		runtime.releaseFirst();
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await vi.waitFor(() => expect(runtime.runs).toBe(2));
 		expect(lastFrame()).not.toContain('Stale response.');
 		expect(lastFrame()).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u);
 		expect(lastFrame()).toContain('Mock · local');

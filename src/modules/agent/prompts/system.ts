@@ -2,6 +2,7 @@ import {commandInstructions} from './commands.js';
 import {fileToolInstructions} from './file-tools.js';
 import {identityInstructions} from './identity.js';
 import type {ProjectInstructionBundle} from './project-instructions.js';
+import {steeringInstructions} from './steering.js';
 import {workflowInstructions} from './workflow.js';
 
 export type SystemPromptContext = {
@@ -90,6 +91,8 @@ export const buildSystemPrompt = (context: SystemPromptContext): string =>
 		'</environment>',
 		'',
 		...taggedLines('working_principles', workflowInstructions),
+		'',
+		...taggedLines('steering_rules', steeringInstructions),
 		'',
 		...taggedLines('file_tool_rules', fileToolInstructions),
 		'',

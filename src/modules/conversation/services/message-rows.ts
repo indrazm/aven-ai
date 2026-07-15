@@ -11,6 +11,11 @@ const TOOL_DETAIL_PREFIX = '  ⎿  ';
 const SUCCESS_DETAIL_LINES = 3;
 const ERROR_DETAIL_LINES = 10;
 
+export const completedStreamingLines = (content: string): string => {
+	const lastNewline = content.lastIndexOf('\n');
+	return lastNewline < 0 ? '' : content.slice(0, lastNewline + 1);
+};
+
 const TOOL_STATUS_MARKER: Record<ToolMessage['status'], string> = {
 	queued: '◌',
 	running: '✻',
@@ -92,10 +97,16 @@ const toolDetailRows = (
 	return rows;
 };
 
-export const messageToRows = (message: UiMessage, width: number, expanded = false): TranscriptRow[] => {
+export const messageToRows = (
+	message: UiMessage,
+	width: number,
+	expanded = false,
+	streaming = false,
+): TranscriptRow[] => {
 	const contentWidth = Math.max(8, width - 2);
 	if (message.kind === 'assistant') {
-		if (!message.content.trim()) return [];
+		const content = streaming ? completedStreamingLines(message.content) : message.content;
+		if (!content.trim()) return [];
 		const prefix: RowSegment[] =
 			message.variant === 'thinking'
 				? [{text: '✻ ', tone: 'muted', selectable: false}]
@@ -103,7 +114,7 @@ export const messageToRows = (message: UiMessage, width: number, expanded = fals
 					? [{text: '◇ ', tone: 'permission', selectable: false}]
 					: [{text: '● ', tone: 'accent', selectable: false}];
 		const gutterWidth = stringWidth(prefix[0]?.text ?? '');
-		const rows = markdownRows(message, message.content, Math.max(1, contentWidth - gutterWidth));
+		const rows = markdownRows(message, content, Math.max(1, contentWidth - gutterWidth));
 		for (const [index, row] of rows.entries()) {
 			row.segments = [index === 0 ? prefix[0]! : {text: ' '.repeat(gutterWidth), selectable: false}, ...row.segments];
 		}
@@ -151,11 +162,16 @@ export const shouldSeparateMessages = (previous: UiMessage, current: UiMessage):
 	return !(previousIsActivity && currentIsActivity);
 };
 
-export const messagesToRows = (messages: readonly UiMessage[], width: number, expanded = false): TranscriptRow[] => {
+export const messagesToRows = (
+	messages: readonly UiMessage[],
+	width: number,
+	expanded = false,
+	streamingAssistantId: string | null = null,
+): TranscriptRow[] => {
 	const rows: TranscriptRow[] = [];
 	let previous: UiMessage | undefined;
 	for (const message of messages) {
-		const rendered = messageToRows(message, width, expanded);
+		const rendered = messageToRows(message, width, expanded, message.id === streamingAssistantId);
 		if (rendered.length === 0) continue;
 		if (previous && shouldSeparateMessages(previous, message))
 			rows.push({id: `${message.id}:gap`, messageId: message.id, messageKind: message.kind, segments: [{text: ''}]});

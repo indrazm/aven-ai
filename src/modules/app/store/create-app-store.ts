@@ -7,6 +7,7 @@ const initialState = (messages: readonly UiMessage[]): AppStoreState => ({
 	messages: [...messages],
 	status: 'idle',
 	activeTurnId: null,
+	streamingAssistantId: null,
 	queuedRequests: [],
 	editor: {value: '', cursor: 0},
 	inputMode: 'prompt',
@@ -23,7 +24,7 @@ export const createAppStore = (messages: readonly UiMessage[] = []): StoreApi<Ap
 		...initialState(messages),
 		applyRuntimeEvent: (event) => set((state) => applyRuntimeEvent(state, event)),
 		appendMessage: (message) => set((state) => ({messages: [...state.messages, message]})),
-		replaceMessages: (messages) => set({messages: [...messages]}),
+		replaceMessages: (messages) => set({messages: [...messages], streamingAssistantId: null}),
 		resetSession: (messages) => set(initialState(messages)),
 		setEditor: (editor) => set((state) => ({editor: typeof editor === 'function' ? editor(state.editor) : editor})),
 		setInputMode: (inputMode) => set({inputMode}),
@@ -48,6 +49,7 @@ export const createAppStore = (messages: readonly UiMessage[] = []): StoreApi<Ap
 			set((state) => ({
 				status: 'idle',
 				activeTurnId: null,
+				streamingAssistantId: null,
 				messages: [
 					...state.messages,
 					{id: `interrupt-${Date.now()}`, kind: 'system', level: 'warning', content: 'Interrupted by user'},

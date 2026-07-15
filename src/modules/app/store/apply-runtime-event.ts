@@ -17,11 +17,17 @@ export const applyRuntimeEvent = (state: AppStoreState, event: RuntimeEvent): Ap
 				],
 				status: event.request.mode === 'bash' ? 'idle' : 'thinking',
 				activeTurnId: event.request.id,
+				streamingAssistantId: null,
 			};
 		case 'status.changed':
 			return {...state, status: event.status};
 		case 'message.appended':
-			return {...state, messages: [...state.messages, event.message]};
+			return {
+				...state,
+				messages: [...state.messages, event.message],
+				streamingAssistantId:
+					event.message.kind === 'tool' || event.message.kind === 'diff' ? null : state.streamingAssistantId,
+			};
 		case 'message.replaced': {
 			const index = state.messages.findIndex((message) => message.id === event.message.id);
 			return index === -1
@@ -34,9 +40,9 @@ export const applyRuntimeEvent = (state: AppStoreState, event: RuntimeEvent): Ap
 		case 'assistant.delta': {
 			const existing = state.messages.find((message) => message.id === event.messageId);
 			if (existing?.kind !== 'assistant') {
-				if (!event.delta.trim()) return state;
 				return {
 					...state,
+					streamingAssistantId: event.messageId,
 					messages: [
 						...state.messages,
 						{
@@ -50,6 +56,7 @@ export const applyRuntimeEvent = (state: AppStoreState, event: RuntimeEvent): Ap
 			}
 			return {
 				...state,
+				streamingAssistantId: event.messageId,
 				messages: state.messages.map((message) =>
 					message.id === event.messageId && message.kind === 'assistant'
 						? {...message, content: message.content + event.delta}
@@ -57,14 +64,19 @@ export const applyRuntimeEvent = (state: AppStoreState, event: RuntimeEvent): Ap
 				),
 			};
 		}
+		case 'assistant.completed':
+			return state.streamingAssistantId === event.messageId ? {...state, streamingAssistantId: null} : state;
 		case 'turn.completed':
-			return state.activeTurnId === event.turnId ? {...state, status: 'idle', activeTurnId: null} : state;
+			return state.activeTurnId === event.turnId
+				? {...state, status: 'idle', activeTurnId: null, streamingAssistantId: null}
+				: state;
 		case 'turn.failed':
 			if (state.activeTurnId !== event.turnId) return state;
 			return {
 				...state,
 				status: 'error',
 				activeTurnId: null,
+				streamingAssistantId: null,
 				messages: [
 					...state.messages,
 					{id: `runtime-error-${event.turnId}`, kind: 'system', level: 'error', content: event.error},

@@ -255,6 +255,13 @@ describe('AnviaAgentRuntime configuration', () => {
 			messageId: 'assistant-prompt-turn-2',
 			delta: 'Workspace inspected.',
 		});
+		const firstCompletion = events.findIndex(
+			(event) => event.type === 'assistant.completed' && event.messageId === 'assistant-prompt',
+		);
+		const toolStart = events.findIndex((event) => event.type === 'message.appended' && event.message.kind === 'tool');
+		expect(firstCompletion).toBeGreaterThan(-1);
+		expect(firstCompletion).toBeLessThan(toolStart);
+		expect(events).toContainEqual({type: 'assistant.completed', messageId: 'assistant-prompt-turn-2'});
 		expect(events.at(-1)).toEqual({type: 'turn.completed', turnId: 'prompt'});
 		const store = createAppStore();
 		for (const event of events) store.getState().applyRuntimeEvent(event);

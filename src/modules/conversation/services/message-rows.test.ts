@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import stringWidth from 'string-width';
 import type {AssistantMessage, ToolMessage} from '../types.js';
 import {demoMessages} from '../fixtures.js';
-import {messageToRows, messagesToRows, rowText, wrapSegments} from './message-rows.js';
+import {completedStreamingLines, messageToRows, messagesToRows, rowText, wrapSegments} from './message-rows.js';
 
 const toolMessage = (status: ToolMessage['status'], lineCount: number): ToolMessage => ({
 	id: `tool-${status}`,
@@ -49,6 +49,31 @@ describe('transcript row model', () => {
 		expect(rowText(rows[0]!)).toMatch(/^● /u);
 		expect(rows.slice(1).every((row) => rowText(row).startsWith('  '))).toBe(true);
 		expect(rows.every((row) => stringWidth(rowText(row)) <= 28)).toBe(true);
+	});
+
+	it('renders only completed source lines while an assistant block is streaming', () => {
+		const message: AssistantMessage = {
+			id: 'assistant-streaming',
+			kind: 'assistant',
+			variant: 'text',
+			content: 'Complete line.\n```ts\nconst complete = true;\nconst partial',
+		};
+
+		expect(completedStreamingLines('partial')).toBe('');
+		expect(completedStreamingLines('complete\npartial')).toBe('complete\n');
+		expect(completedStreamingLines('complete\r\npartial')).toBe('complete\r\n');
+		expect(messageToRows({...message, content: 'partial'}, 80, false, true)).toEqual([]);
+
+		const streamingRows = messageToRows(message, 80, false, true);
+		const streamingText = streamingRows.map((row) => rowText(row)).join('\n');
+		expect(streamingText).toContain('Complete line.');
+		expect(streamingText).toContain('const complete = true;');
+		expect(streamingText).not.toContain('const partial');
+
+		const completedText = messageToRows(message, 80)
+			.map((row) => rowText(row))
+			.join('\n');
+		expect(completedText).toContain('const partial');
 	});
 
 	it('hides successful command output by default and reveals it on expansion', () => {

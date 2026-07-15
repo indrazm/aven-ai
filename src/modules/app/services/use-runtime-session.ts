@@ -1,16 +1,50 @@
-import {useCallback, useEffect, useRef} from 'react';
-import type {AgentStatus, InputMode, SubmitRequest, WorkspaceMention} from '../../agent/index.js';
-import type {AgentRuntime} from '../../agent/index.js';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef} from 'react';
+import {
+	isSteerableRuntime,
+	type AgentRuntime,
+	type AgentStatus,
+	type InputMode,
+	type RuntimeEvent,
+	type SubmitRequest,
+	type WorkspaceMention,
+} from '../../agent/index.js';
 import {normalizeInput} from '../../composer/index.js';
 import {useAppStore, useAppStoreApi} from '../components/app-provider.js';
-import {RuntimeEventBatcher} from './runtime-event-batcher.js';
+
+type RequestInput = {
+	content: string;
+	mode: InputMode;
+	mentions: readonly WorkspaceMention[];
+};
+
+type RuntimeGeneration = {
+	runtime: AgentRuntime;
+	controller: AbortController | null;
+	currentRequest: SubmitRequest | null;
+	disposed: boolean;
+	draining: boolean;
+	requestStarted: boolean;
+	requestSettled: boolean;
+};
 
 export type RuntimeSession = {
-	submit: (content: string, mode: InputMode, mentions?: readonly WorkspaceMention[]) => void;
+	submit: (content: string, mode: InputMode, mentions?: readonly WorkspaceMention[]) => boolean;
+	steer: (content: string, mode: InputMode, mentions?: readonly WorkspaceMention[]) => boolean;
+	enqueue: (content: string, mode: InputMode, mentions?: readonly WorkspaceMention[]) => boolean;
 	interrupt: () => void;
 };
 
 const canStartTurn = (status: AgentStatus): boolean => status === 'idle' || status === 'error';
+
+const requestInput = (
+	value: string,
+	mode: InputMode,
+	mentions: readonly WorkspaceMention[],
+): RequestInput | undefined => {
+	const content = normalizeInput(value).trim();
+	if (!content) return undefined;
+	return {content, mode, mentions};
+};
 
 export const useRuntimeSession = (
 	runtime: AgentRuntime,
@@ -19,78 +53,195 @@ export const useRuntimeSession = (
 	const store = useAppStoreApi();
 	const activeTurnId = useAppStore((state) => state.activeTurnId);
 	const queuedCount = useAppStore((state) => state.queuedRequests.length);
+	const status = useAppStore((state) => state.status);
 	const sequence = useRef(0);
-	const controller = useRef<AbortController | null>(null);
+	const generation = useMemo<RuntimeGeneration>(
+		() => ({
+			runtime,
+			controller: null,
+			currentRequest: null,
+			disposed: false,
+			draining: false,
+			requestStarted: false,
+			requestSettled: false,
+		}),
+		[runtime],
+	);
+	const latestGeneration = useRef(generation);
+	useLayoutEffect(() => {
+		latestGeneration.current = generation;
+	}, [generation]);
+
+	const createRequest = useCallback((input: RequestInput): SubmitRequest => {
+		return {
+			id: `live-${++sequence.current}`,
+			content: input.content,
+			mode: input.mode,
+			...(input.mentions.length > 0 ? {mentions: [...input.mentions]} : {}),
+		};
+	}, []);
 
 	const execute = useCallback(
 		async (request: SubmitRequest) => {
+			if (generation.disposed) return;
 			const abortController = new AbortController();
-			controller.current = abortController;
-			const batcher = new RuntimeEventBatcher((event) => {
-				if (controller.current !== abortController || abortController.signal.aborted) return;
+			generation.controller = abortController;
+			generation.currentRequest = request;
+			generation.requestStarted = false;
+			generation.requestSettled = false;
+			const dispatch = (event: RuntimeEvent) => {
+				if (generation.disposed || generation.controller !== abortController || abortController.signal.aborted) return;
 				store.getState().applyRuntimeEvent(event);
-				if (event.type === 'turn.started') onSessionActivity?.('started');
-				if (event.type === 'turn.completed') onSessionActivity?.('completed');
-			});
-			try {
-				for await (const event of runtime.run(request, abortController.signal)) {
-					if (controller.current !== abortController || abortController.signal.aborted) break;
-					batcher.push(event);
+				if (event.type === 'turn.started') {
+					generation.requestStarted = true;
+					onSessionActivity?.('started');
 				}
-				batcher.flush();
+				if (event.type === 'turn.completed') {
+					generation.requestSettled = true;
+					onSessionActivity?.('completed');
+				}
+				if (event.type === 'turn.failed') generation.requestSettled = true;
+			};
+			try {
+				for await (const event of generation.runtime.run(request, abortController.signal)) {
+					if (generation.disposed || generation.controller !== abortController || abortController.signal.aborted) break;
+					dispatch(event);
+				}
+				if (!abortController.signal.aborted && !generation.requestSettled) {
+					if (!generation.requestStarted) dispatch({type: 'turn.started', request});
+					dispatch({
+						type: 'turn.failed',
+						turnId: request.id,
+						error: 'The runtime ended before completing the turn.',
+					});
+				}
 			} catch (error) {
 				if (!abortController.signal.aborted) {
-					batcher.flush();
-					store.getState().applyRuntimeEvent({
+					if (!generation.requestStarted) dispatch({type: 'turn.started', request});
+					dispatch({
 						type: 'turn.failed',
 						turnId: request.id,
 						error: error instanceof Error ? error.message : String(error),
 					});
-				} else batcher.discard();
+				}
 			} finally {
-				batcher.discard();
-				if (controller.current === abortController) controller.current = null;
+				if (generation.controller === abortController) generation.controller = null;
+				if (generation.currentRequest === request) generation.currentRequest = null;
 			}
 		},
-		[onSessionActivity, runtime, store],
+		[generation, onSessionActivity, store],
 	);
+
+	const drain = useCallback(async () => {
+		if (generation.draining || generation.disposed) return;
+		const state = store.getState();
+		if (state.activeTurnId || !canStartTurn(state.status)) return;
+		generation.draining = true;
+		try {
+			while (!generation.disposed) {
+				const request = store.getState().shiftQueuedRequest();
+				if (!request) break;
+				await execute(request);
+			}
+		} finally {
+			generation.draining = false;
+		}
+	}, [execute, generation, store]);
 
 	const submit = useCallback(
 		(value: string, mode: InputMode, mentions: readonly WorkspaceMention[] = []) => {
-			const content = normalizeInput(value).trim();
-			if (!content) return;
-			const request: SubmitRequest = {
-				id: `live-${++sequence.current}`,
-				content,
-				mode,
-				...(mentions.length > 0 ? {mentions: [...mentions]} : {}),
-			};
+			const input = requestInput(value, mode, mentions);
+			if (!input) return false;
 			const state = store.getState();
-			if (controller.current || state.activeTurnId || !canStartTurn(state.status)) state.enqueueRequest(request);
-			else void execute(request);
+			if (state.activeTurnId || !canStartTurn(state.status)) return false;
+			state.enqueueRequest(createRequest(input));
+			void drain();
+			return true;
 		},
-		[execute, store],
+		[createRequest, drain, store],
+	);
+
+	const steer = useCallback(
+		(value: string, mode: InputMode, mentions: readonly WorkspaceMention[] = []) => {
+			const input = requestInput(value, mode, mentions);
+			const abortController = generation.controller;
+			if (
+				!input ||
+				generation.disposed ||
+				!abortController ||
+				abortController.signal.aborted ||
+				!store.getState().activeTurnId ||
+				!isSteerableRuntime(generation.runtime)
+			) {
+				return false;
+			}
+			const request = createRequest(input);
+			let accepted: boolean;
+			try {
+				accepted = generation.runtime.steer(request);
+			} catch {
+				return false;
+			}
+			if (!accepted) return false;
+			store.getState().appendMessage({
+				id: `user-${request.id}`,
+				kind: 'user',
+				variant: request.mode === 'bash' ? 'bash' : 'prompt',
+				content: request.content,
+			});
+			return true;
+		},
+		[createRequest, generation, store],
+	);
+
+	const enqueue = useCallback(
+		(value: string, mode: InputMode, mentions: readonly WorkspaceMention[] = []) => {
+			const input = requestInput(value, mode, mentions);
+			if (!input) return false;
+			store.getState().enqueueRequest(createRequest(input));
+			void drain();
+			return true;
+		},
+		[createRequest, drain, store],
 	);
 
 	const interrupt = useCallback(() => {
-		controller.current?.abort(new Error('Interrupted by user'));
-		controller.current = null;
+		generation.controller?.abort(new Error('Interrupted by user'));
 		store.getState().interrupt();
-	}, [store]);
+	}, [generation, store]);
 
 	useEffect(() => {
-		if (activeTurnId || queuedCount === 0 || !canStartTurn(store.getState().status)) return;
-		const request = store.getState().shiftQueuedRequest();
-		if (request) void execute(request);
-	}, [activeTurnId, execute, queuedCount, store]);
+		void drain();
+	}, [activeTurnId, drain, queuedCount, status]);
 
 	useEffect(
 		() => () => {
-			controller.current?.abort(new Error('Application disposed'));
-			void runtime.dispose();
+			const alreadyAborted = generation.controller?.signal.aborted ?? false;
+			generation.disposed = true;
+			generation.controller?.abort(new Error('Application disposed'));
+			void generation.runtime.dispose();
+			if (latestGeneration.current === generation || alreadyAborted) return;
+
+			const request = generation.currentRequest;
+			if (!request || generation.requestSettled) return;
+			const state = store.getState();
+			if (state.activeTurnId === request.id) {
+				state.applyRuntimeEvent({
+					type: 'turn.failed',
+					turnId: request.id,
+					error: 'The runtime changed before the active turn completed.',
+				});
+			} else if (!state.activeTurnId && !generation.requestStarted) {
+				state.applyRuntimeEvent({type: 'turn.started', request});
+				store.getState().applyRuntimeEvent({
+					type: 'turn.failed',
+					turnId: request.id,
+					error: 'The runtime changed before the active turn completed.',
+				});
+			}
 		},
-		[runtime],
+		[generation, store],
 	);
 
-	return {submit, interrupt};
+	return {submit, steer, enqueue, interrupt};
 };

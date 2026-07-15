@@ -12,12 +12,14 @@ export type {TranscriptHandle} from '../types.js';
 type Props = {
 	messages: readonly UiMessage[];
 	active: boolean;
+	streamingAssistantId?: string | null;
 };
 
-export const VirtualTranscript = forwardRef<TranscriptHandle, Props>(({messages, active}, handleRef) => {
+export const VirtualTranscript = forwardRef<TranscriptHandle, Props>((props, handleRef) => {
+	const {messages, active, streamingAssistantId = null} = props;
 	const boxRef = useRef<DOMElement>(null);
 	const metrics = useBoxMetrics(boxRef);
-	const controller = useTranscriptController(messages, metrics, handleRef, active);
+	const controller = useTranscriptController(messages, metrics, handleRef, active, streamingAssistantId);
 
 	return (
 		<Box ref={boxRef} flexDirection="column" flexBasis={0} flexGrow={1} flexShrink={1} minHeight={0} overflow="hidden">
